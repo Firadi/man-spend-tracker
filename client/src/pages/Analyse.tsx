@@ -446,10 +446,10 @@ export default function Analyse() {
       default:
         // Editable fields
         return (
-          <TableCell key={columnId} className="p-1">
+          <TableCell key={columnId} className="p-0">
             <Input 
               type="number" 
-              className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
+              className="w-full h-10 text-right font-mono bg-transparent border-none shadow-none focus-visible:ring-0 rounded-none px-4"
               value={row[columnId] || ''}
               onChange={(e) => handleUpdate(row.product.id, columnId as any, e.target.value)}
               placeholder="0"
