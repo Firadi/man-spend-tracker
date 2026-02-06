@@ -28,7 +28,7 @@ export default function Analyse() {
     return statusMatch && countryMatch;
   });
 
-  const getAnalysisValue = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees') => {
+  const getAnalysisValue = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'deliveredOrders') => {
     if (!activeCountryId) return 0;
     const override = analysis[activeCountryId]?.[productId]?.[field];
     if (override !== undefined) return override;
@@ -40,7 +40,7 @@ export default function Analyse() {
     return 0;
   };
 
-  const handleUpdate = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees', value: string) => {
+  const handleUpdate = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'deliveredOrders', value: string) => {
     if (!activeCountryId) return;
     const numValue = parseFloat(value) || 0;
     updateAnalysis(activeCountryId, productId, { [field]: numValue });
@@ -52,6 +52,7 @@ export default function Analyse() {
     const ads = getAnalysisValue(p.id, 'ads');
     const serviceFees = getAnalysisValue(p.id, 'serviceFees');
     const productFees = getAnalysisValue(p.id, 'productFees');
+    const deliveredOrders = getAnalysisValue(p.id, 'deliveredOrders');
     const profit = revenue - ads - serviceFees - productFees;
     
     return {
@@ -60,6 +61,7 @@ export default function Analyse() {
       ads,
       serviceFees,
       productFees,
+      deliveredOrders,
       profit
     };
   });
@@ -69,10 +71,13 @@ export default function Analyse() {
     ads: acc.ads + row.ads,
     serviceFees: acc.serviceFees + row.serviceFees,
     productFees: acc.productFees + row.productFees,
+    deliveredOrders: acc.deliveredOrders + row.deliveredOrders,
     profit: acc.profit + row.profit,
-  }), { revenue: 0, ads: 0, serviceFees: 0, productFees: 0, profit: 0 });
+  }), { revenue: 0, ads: 0, serviceFees: 0, productFees: 0, deliveredOrders: 0, profit: 0 });
 
   const totalOrders = rows.reduce((acc, row) => {
+    // If delivered orders is manually set > 0, use it. Otherwise fallback to revenue/price calculation.
+    if (row.deliveredOrders > 0) return acc + row.deliveredOrders;
     if (row.product.price > 0) return acc + (row.revenue / row.product.price);
     return acc;
   }, 0);
@@ -149,13 +154,14 @@ export default function Analyse() {
                 <TableHead className="w-[140px] text-right">Ads</TableHead>
                 <TableHead className="w-[140px] text-right">Service Fees</TableHead>
                 <TableHead className="w-[140px] text-right">Prod. Fees</TableHead>
+                <TableHead className="w-[140px] text-right">Delivered</TableHead>
                 <TableHead className="w-[140px] text-right font-bold">Profit</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                      No products assigned to this country (or no active products).
                   </TableCell>
                 </TableRow>
@@ -202,6 +208,15 @@ export default function Analyse() {
                         placeholder="0"
                       />
                     </TableCell>
+                    <TableCell className="p-1">
+                      <Input 
+                        type="number" 
+                        className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
+                        value={row.deliveredOrders || ''}
+                        onChange={(e) => handleUpdate(row.product.id, 'deliveredOrders', e.target.value)}
+                        placeholder="0"
+                      />
+                    </TableCell>
                     <TableCell className="text-right font-mono font-medium">
                       <span className={row.profit > 0 ? 'text-green-600' : row.profit < 0 ? 'text-red-600' : 'text-muted-foreground'}>
                         {formatNumber(row.profit)}
@@ -217,6 +232,7 @@ export default function Analyse() {
                   <TableCell className="text-right font-mono">{formatNumber(totals.ads)}</TableCell>
                   <TableCell className="text-right font-mono">{formatNumber(totals.serviceFees)}</TableCell>
                   <TableCell className="text-right font-mono">{formatNumber(totals.productFees)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatNumber(totals.deliveredOrders)}</TableCell>
                   <TableCell className="text-right font-mono">
                     <span className={totals.profit > 0 ? 'text-green-600' : totals.profit < 0 ? 'text-red-600' : ''}>
                       {formatCurrency(totals.profit, activeCountry.currency)}

@@ -29,6 +29,7 @@ export interface AnalysisOverride {
   ads?: number;
   serviceFees?: number;
   productFees?: number;
+  deliveredOrders?: number;
 }
 
 // Map: CountryID -> ProductID -> Override
