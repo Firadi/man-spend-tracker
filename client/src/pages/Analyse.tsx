@@ -487,7 +487,14 @@ export default function Analyse() {
       case 'product':
         return (
           <TableCell key={columnId}>
-            <div className="font-medium">{row.product.name}</div>
+            <div className="font-medium flex items-center gap-2">
+              {row.product.name}
+              {activeCountry && (
+                <span className="text-[10px] font-normal text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border">
+                  {activeCountry.name}
+                </span>
+              )}
+            </div>
             <div className="text-xs text-muted-foreground font-mono">{row.product.sku}</div>
           </TableCell>
         );
