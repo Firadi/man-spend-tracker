@@ -57,6 +57,7 @@ function App() {
 }
 
 function AppWrapper() {
+  console.log("AppWrapper mounting");
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

@@ -1,0 +1,8 @@
+<workflow>
+<name>
+Start application
+</name>
+<command>
+npm run dev:client
+</command>
+</workflow>

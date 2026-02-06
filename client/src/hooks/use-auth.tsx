@@ -1,7 +1,6 @@
-import { createContext, ReactNode, useContext } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { createContext, ReactNode, useContext, useState, useEffect } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { InsertUser, User } from "@shared/schema";
-import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 type AuthContextType = {
@@ -18,23 +17,37 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const {
-    data: user,
-    error,
-    isLoading,
-  } = useQuery<User | null, Error>({
-    queryKey: ["/api/user"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-  });
+  useEffect(() => {
+    // Simulate checking session
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: Pick<InsertUser, "username" | "password">) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Mock login logic
+      if (credentials.username === "admin" && credentials.password === "admin") {
+        return { id: 1, username: "admin", password: "hashed_password" } as User;
+      }
+      
+      // Allow any login for mockup purposes
+      return { id: 1, username: credentials.username, password: "hashed_password" } as User;
     },
     onSuccess: (user: User) => {
+      setUser(user);
       queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "Welcome back!",
+        description: `Logged in as ${user.username}`,
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -47,11 +60,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (credentials: InsertUser) => {
-      const res = await apiRequest("POST", "/api/register", credentials);
-      return await res.json();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return { id: Math.floor(Math.random() * 1000), username: credentials.username, password: "hashed_password" } as User;
     },
     onSuccess: (user: User) => {
+      setUser(user);
       queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "Account created",
+        description: "You have been registered successfully.",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -64,10 +82,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/logout");
+      await new Promise(resolve => setTimeout(resolve, 500));
     },
     onSuccess: () => {
+      setUser(null);
       queryClient.setQueryData(["/api/user"], null);
+      toast({
+        title: "Logged out",
+        description: "See you next time!",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -81,9 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user: user ?? null,
+        user,
         isLoading,
-        error,
+        error: null,
         loginMutation,
         logoutMutation,
         registerMutation,

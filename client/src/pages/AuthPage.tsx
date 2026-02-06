@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
+  console.log("AuthPage mounting");
   const { user, loginMutation, registerMutation } = useAuth();
   const [, setLocation] = useLocation();
 
