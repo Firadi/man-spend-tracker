@@ -68,7 +68,7 @@ const ALL_COLUMNS: Column[] = [
   { id: 'productFees', label: 'Prod. Fees', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'profit', label: 'Profit', align: 'right', width: 'w-[140px]' },
   { id: 'margin', label: 'Margin', align: 'right', width: 'w-[100px]' },
-  { id: 'actions', label: '', align: 'right', width: 'w-[80px]' },
+  { id: 'actions', label: '', align: 'right', width: 'w-[110px]' },
 ];
 
 function CircularProgress({ value, size = 40, strokeWidth = 3 }: { value: number, size?: number, strokeWidth?: number }) {
@@ -420,6 +420,67 @@ export default function Analyse() {
 
   const globalMargin = totals.revenue > 0 ? (totals.profit / totals.revenue) * 100 : 0;
 
+  const handleDownloadProduct = (row: any) => {
+    try {
+      const pdf = new jsPDF();
+      
+      // Header
+      pdf.setFontSize(18);
+      pdf.setTextColor(40, 40, 40);
+      pdf.text("Product Analysis Report", 20, 20);
+      
+      // Product Info
+      pdf.setFontSize(14);
+      pdf.text(row.product.name, 20, 35);
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`SKU: ${row.product.sku}`, 20, 40);
+      
+      // Date
+      pdf.text(`Date: ${new Date().toLocaleDateString()}`, 150, 20);
+      
+      // Divider
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(20, 45, 190, 45);
+      
+      // Metrics
+      let y = 60;
+      const addMetric = (label: string, value: string) => {
+        pdf.setTextColor(60, 60, 60);
+        pdf.text(label, 20, y);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(value, 120, y);
+        y += 10;
+      };
+
+      addMetric("Total Orders", formatNumber(row.totalOrders));
+      addMetric("Confirmed Orders", formatNumber(row.ordersConfirmed));
+      addMetric("Confirmation Rate", `${row.confirmationRate.toFixed(1)}%`);
+      addMetric("Delivered Orders", formatNumber(row.deliveredOrders));
+      addMetric("Delivery Rate", `${row.deliveryRate.toFixed(1)}%`);
+      
+      y += 5; // Extra spacing
+      
+      addMetric("Revenue", formatCurrency(row.revenue, activeCountry?.currency || 'USD'));
+      addMetric("Ads Cost", formatCurrency(row.ads, activeCountry?.currency || 'USD'));
+      addMetric("Service Fees", formatCurrency(row.serviceFees, activeCountry?.currency || 'USD'));
+      addMetric("Product Fees", formatCurrency(row.productFees, activeCountry?.currency || 'USD'));
+      
+      y += 5;
+      
+      pdf.setFontSize(12);
+      pdf.setFont("helvetica", "bold");
+      addMetric("Net Profit", formatCurrency(row.profit, activeCountry?.currency || 'USD'));
+      addMetric("Margin", `${row.margin.toFixed(1)}%`);
+      
+      pdf.save(`product-${row.product.sku.replace(/\s+/g, '-')}.pdf`);
+      toast({ title: "Product Report Downloaded", description: `Report for ${row.product.name} saved.` });
+    } catch (error) {
+       console.error(error);
+       toast({ title: "Error", description: "Could not generate report.", variant: "destructive" });
+    }
+  };
+
   // Render Cell Helper
   const renderCell = (row: any, columnId: string) => {
     switch (columnId) {
@@ -452,6 +513,9 @@ export default function Analyse() {
              <div className="flex items-center justify-end gap-1">
                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewProduct(row)}>
                  <Eye className="h-4 w-4 text-muted-foreground" />
+               </Button>
+               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownloadProduct(row)}>
+                 <Download className="h-4 w-4 text-muted-foreground" />
                </Button>
                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({ title: "Saved", description: "Changes saved successfully." })}>
                  <Save className="h-4 w-4 text-muted-foreground" />
