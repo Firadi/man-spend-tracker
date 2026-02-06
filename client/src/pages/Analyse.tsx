@@ -310,7 +310,7 @@ export default function Analyse() {
     // Defaults
     if (field === 'serviceFees' && activeCountry) {
       const delivered = getAnalysisValue(productId, 'deliveredOrders');
-      const feePerOrder = activeCountry.defaultShipping + activeCountry.defaultCod + activeCountry.defaultReturn;
+      const feePerOrder = (activeCountry.defaultShipping || 0) + (activeCountry.defaultCod || 0) + (activeCountry.defaultReturn || 0);
       return delivered * feePerOrder;
     }
     return 0;
@@ -372,14 +372,14 @@ export default function Analyse() {
   });
 
   const totals = rows.reduce((acc, row) => ({
-    revenue: acc.revenue + row.revenue,
-    ads: acc.ads + row.ads,
-    serviceFees: acc.serviceFees + row.serviceFees,
-    productFees: acc.productFees + row.productFees,
-    deliveredOrders: acc.deliveredOrders + row.deliveredOrders,
-    totalOrders: acc.totalOrders + row.totalOrders,
-    ordersConfirmed: acc.ordersConfirmed + row.ordersConfirmed,
-    profit: acc.profit + row.profit,
+    revenue: acc.revenue + (Number(row.revenue) || 0),
+    ads: acc.ads + (Number(row.ads) || 0),
+    serviceFees: acc.serviceFees + (Number(row.serviceFees) || 0),
+    productFees: acc.productFees + (Number(row.productFees) || 0),
+    deliveredOrders: acc.deliveredOrders + (Number(row.deliveredOrders) || 0),
+    totalOrders: acc.totalOrders + (Number(row.totalOrders) || 0),
+    ordersConfirmed: acc.ordersConfirmed + (Number(row.ordersConfirmed) || 0),
+    profit: acc.profit + (Number(row.profit) || 0),
   }), { revenue: 0, ads: 0, serviceFees: 0, productFees: 0, deliveredOrders: 0, totalOrders: 0, ordersConfirmed: 0, profit: 0 });
 
   // Calculate Global Rates
