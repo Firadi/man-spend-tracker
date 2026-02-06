@@ -1,9 +1,10 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, LineChart, Package, Globe, Settings, Menu } from "lucide-react";
+import { LayoutDashboard, LineChart, Package, Globe, Settings, Menu, PanelLeft, PanelLeftClose } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { useStore } from "@/lib/store";
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -15,6 +16,7 @@ const navItems = [
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const { sidebarCollapsed, toggleSidebar } = useStore();
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-sidebar border-r border-sidebar-border">
@@ -23,7 +25,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="w-8 h-8 bg-primary rounded-md flex items-center justify-center text-primary-foreground">
             <LineChart className="w-5 h-5" />
           </div>
-          KPI Tracker
+          {!sidebarCollapsed && <span>KPI Tracker</span>}
         </h1>
       </div>
       
@@ -36,10 +38,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
                 isActive 
                   ? "bg-sidebar-primary/10 text-sidebar-primary" 
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                sidebarCollapsed && "justify-center px-2"
               )}>
                 <item.icon className="w-4 h-4" />
-                {item.name}
+                {!sidebarCollapsed && <span>{item.name}</span>}
               </a>
             </Link>
           );
@@ -47,14 +50,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </nav>
 
       <div className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center">
+        <div className={cn("flex items-center gap-3", sidebarCollapsed && "justify-center")}>
+          <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center shrink-0">
             <span className="text-xs font-bold text-sidebar-accent-foreground">JD</span>
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium text-sidebar-foreground">John Doe</span>
-            <span className="text-xs text-sidebar-foreground/50">Admin</span>
-          </div>
+          {!sidebarCollapsed && (
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-sm font-medium text-sidebar-foreground truncate">John Doe</span>
+              <span className="text-xs text-sidebar-foreground/50 truncate">Admin</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -63,7 +68,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:block w-64 fixed inset-y-0 left-0 z-50">
+      <aside 
+        className={cn(
+          "hidden md:block fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out border-r border-sidebar-border bg-sidebar",
+          sidebarCollapsed ? "w-[70px]" : "w-64"
+        )}
+      >
         <SidebarContent />
       </aside>
 
@@ -80,7 +90,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-64 p-8 min-h-screen overflow-x-hidden">
+      <main 
+        className={cn(
+          "flex-1 p-8 min-h-screen overflow-x-hidden transition-all duration-300 ease-in-out",
+          sidebarCollapsed ? "md:ml-[70px]" : "md:ml-64"
+        )}
+      >
+        {/* Top Header Area for Toggle */}
+        <div className="flex items-center mb-6">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleSidebar}
+            className="hidden md:flex mr-4 text-muted-foreground hover:text-foreground"
+            title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {sidebarCollapsed ? <PanelLeft className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+          </Button>
+        </div>
+
         <div className="max-w-7xl mx-auto animate-in fade-in duration-500">
           {children}
         </div>

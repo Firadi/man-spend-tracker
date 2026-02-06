@@ -59,6 +59,10 @@ interface AppState {
   // Column reordering
   columnOrder: string[];
   setColumnOrder: (order: string[]) => void;
+
+  // Sidebar state
+  sidebarCollapsed: boolean;
+  toggleSidebar: () => void;
   
   seed: () => void;
 }
@@ -70,10 +74,12 @@ export const useStore = create<AppState>()(
       products: [],
       analysis: {},
       columnOrder: ['product', 'revenue', 'ads', 'serviceFees', 'productFees', 'deliveredOrders', 'profit'],
+      sidebarCollapsed: false,
 
       setColumnOrder: (order) => set({ columnOrder: order }),
+      toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
-      addCountry: (country) => set((state) => ({ 
+      addCountry: (country) => set((state) => ({  
         countries: [...state.countries, { ...country, id: uuidv4() }] 
       })),
       
