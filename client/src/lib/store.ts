@@ -30,6 +30,8 @@ export interface AnalysisOverride {
   serviceFees?: number;
   productFees?: number;
   deliveredOrders?: number;
+  totalOrders?: number;
+  ordersConfirmed?: number;
 }
 
 // Map: CountryID -> ProductID -> Override
@@ -73,7 +75,20 @@ export const useStore = create<AppState>()(
       countries: [],
       products: [],
       analysis: {},
-      columnOrder: ['product', 'deliveredOrders', 'revenue', 'ads', 'serviceFees', 'productFees', 'profit'],
+      columnOrder: [
+        'product', 
+        'totalOrders', 
+        'ordersConfirmed', 
+        'confirmationRate',
+        'deliveredOrders', 
+        'deliveryRate',
+        'deliveryRatePerLead',
+        'revenue', 
+        'ads', 
+        'serviceFees', 
+        'productFees', 
+        'profit'
+      ],
       sidebarCollapsed: false,
 
       setColumnOrder: (order) => set({ columnOrder: order }),

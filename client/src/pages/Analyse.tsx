@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useStore, Product } from "@/lib/store";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,11 +38,16 @@ interface Column {
 
 const ALL_COLUMNS: Column[] = [
   { id: 'product', label: 'Product', align: 'left', width: 'min-w-[200px]' },
+  { id: 'totalOrders', label: 'Total Orders', align: 'right', width: 'w-[120px]', editable: true },
+  { id: 'ordersConfirmed', label: 'Ord. Confirmed', align: 'right', width: 'w-[120px]', editable: true },
+  { id: 'confirmationRate', label: 'Conf. Rate (%)', align: 'right', width: 'w-[100px]' },
+  { id: 'deliveredOrders', label: 'Delivered Order', align: 'right', width: 'w-[140px]', editable: true },
+  { id: 'deliveryRate', label: 'Del. Rate (%)', align: 'right', width: 'w-[100px]' },
+  { id: 'deliveryRatePerLead', label: 'Del. Rate/Lead', align: 'right', width: 'w-[120px]' },
   { id: 'revenue', label: 'Revenue', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'ads', label: 'Ads', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'serviceFees', label: 'Service Fees', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'productFees', label: 'Prod. Fees', align: 'right', width: 'w-[140px]', editable: true },
-  { id: 'deliveredOrders', label: 'Delivered Order', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'profit', label: 'Profit', align: 'right', width: 'w-[140px]' },
 ];
 
@@ -86,6 +91,19 @@ export default function Analyse() {
   const [showDrafts, setShowDrafts] = useState(false);
   const { toast } = useToast();
 
+  // Fix for persisted legacy column order:
+  // If the persisted columnOrder is missing any of the current ALL_COLUMNS (newly added ones),
+  // reset it to the default order to ensure users see the new columns in the correct logical order.
+  useEffect(() => {
+    const defaultIds = ALL_COLUMNS.map(c => c.id);
+    const currentIds = columnOrder || [];
+    const missingIds = defaultIds.filter(id => !currentIds.includes(id));
+    
+    if (missingIds.length > 0) {
+      setColumnOrder(defaultIds);
+    }
+  }, [columnOrder, setColumnOrder]);
+
   // Initialize column order if empty (legacy support)
   const currentColumnOrder = columnOrder && columnOrder.length > 0 ? columnOrder : ALL_COLUMNS.map(c => c.id);
 
@@ -119,7 +137,7 @@ export default function Analyse() {
     return statusMatch && countryMatch;
   });
 
-  const getAnalysisValue = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'deliveredOrders'): number => {
+  const getAnalysisValue = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'deliveredOrders' | 'totalOrders' | 'ordersConfirmed'): number => {
     if (!activeCountryId) return 0;
     const override = analysis[activeCountryId]?.[productId]?.[field];
     if (override !== undefined) return override;
@@ -133,7 +151,7 @@ export default function Analyse() {
     return 0;
   };
 
-  const handleUpdate = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'deliveredOrders', value: string) => {
+  const handleUpdate = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'deliveredOrders' | 'totalOrders' | 'ordersConfirmed', value: string) => {
     if (!activeCountryId) return;
     const numValue = parseFloat(value) || 0;
     updateAnalysis(activeCountryId, productId, { [field]: numValue });
@@ -146,6 +164,17 @@ export default function Analyse() {
     const serviceFees = getAnalysisValue(p.id, 'serviceFees');
     const productFees = getAnalysisValue(p.id, 'productFees');
     const deliveredOrders = getAnalysisValue(p.id, 'deliveredOrders');
+    
+    // New Fields
+    const totalOrders = getAnalysisValue(p.id, 'totalOrders');
+    const ordersConfirmed = getAnalysisValue(p.id, 'ordersConfirmed');
+
+    // Calculated Fields
+    const confirmationRate = totalOrders > 0 ? (ordersConfirmed / totalOrders) * 100 : 0;
+    const deliveryRate = ordersConfirmed > 0 ? (deliveredOrders / ordersConfirmed) * 100 : 0;
+    // Assuming Delivery Rate per Lead is Delivered / Total Orders
+    const deliveryRatePerLead = totalOrders > 0 ? (deliveredOrders / totalOrders) * 100 : 0;
+
     const profit = revenue - ads - serviceFees - productFees;
     
     return {
@@ -156,6 +185,11 @@ export default function Analyse() {
       serviceFees,
       productFees,
       deliveredOrders,
+      totalOrders,
+      ordersConfirmed,
+      confirmationRate,
+      deliveryRate,
+      deliveryRatePerLead,
       profit
     };
   });
@@ -166,8 +200,15 @@ export default function Analyse() {
     serviceFees: acc.serviceFees + row.serviceFees,
     productFees: acc.productFees + row.productFees,
     deliveredOrders: acc.deliveredOrders + row.deliveredOrders,
+    totalOrders: acc.totalOrders + row.totalOrders,
+    ordersConfirmed: acc.ordersConfirmed + row.ordersConfirmed,
     profit: acc.profit + row.profit,
-  }), { revenue: 0, ads: 0, serviceFees: 0, productFees: 0, deliveredOrders: 0, profit: 0 });
+  }), { revenue: 0, ads: 0, serviceFees: 0, productFees: 0, deliveredOrders: 0, totalOrders: 0, ordersConfirmed: 0, profit: 0 });
+
+  // Calculate Global Rates
+  const globalConfirmationRate = totals.totalOrders > 0 ? (totals.ordersConfirmed / totals.totalOrders) * 100 : 0;
+  const globalDeliveryRate = totals.ordersConfirmed > 0 ? (totals.deliveredOrders / totals.ordersConfirmed) * 100 : 0;
+  const globalDeliveryRatePerLead = totals.totalOrders > 0 ? (totals.deliveredOrders / totals.totalOrders) * 100 : 0;
 
   // CPA Calculation: ADS / DELIVERED ORDER
   const globalCPA = totals.deliveredOrders > 0 ? totals.ads / totals.deliveredOrders : 0;
@@ -209,6 +250,16 @@ export default function Analyse() {
              </span>
           </TableCell>
         );
+      case 'confirmationRate':
+      case 'deliveryRate':
+      case 'deliveryRatePerLead':
+        // @ts-ignore
+        const rateValue = row[columnId];
+        return (
+          <TableCell key={columnId} className="text-right font-mono">
+            {rateValue.toFixed(1)}%
+          </TableCell>
+        );
       default:
         // Editable fields
         return (
@@ -237,6 +288,12 @@ export default function Analyse() {
              </span>
            </TableCell>
          );
+       case 'confirmationRate':
+         return <TableCell key={columnId} className="text-right font-mono">{globalConfirmationRate.toFixed(1)}%</TableCell>;
+       case 'deliveryRate':
+         return <TableCell key={columnId} className="text-right font-mono">{globalDeliveryRate.toFixed(1)}%</TableCell>;
+       case 'deliveryRatePerLead':
+         return <TableCell key={columnId} className="text-right font-mono">{globalDeliveryRatePerLead.toFixed(1)}%</TableCell>;
        default:
          // @ts-ignore
          const val = totals[columnId];
