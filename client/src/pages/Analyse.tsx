@@ -477,7 +477,7 @@ export default function Analyse() {
           <TableCell key={columnId} className="p-0">
             <Input 
               type="number" 
-              className="w-full h-10 text-right font-bold text-base bg-transparent border-none shadow-none focus-visible:ring-0 rounded-none px-4 text-foreground"
+              className="w-full h-10 text-right font-bold text-base bg-transparent border-none shadow-none focus-visible:ring-0 rounded-none px-2 text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               value={row[columnId] || ''}
               onChange={(e) => handleUpdate(row.product.id, columnId as any, e.target.value)}
               placeholder="0"
