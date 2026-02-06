@@ -56,6 +56,10 @@ interface AppState {
 
   updateAnalysis: (countryId: string, productId: string, data: AnalysisOverride) => void;
   
+  // Column reordering
+  columnOrder: string[];
+  setColumnOrder: (order: string[]) => void;
+  
   seed: () => void;
 }
 
@@ -65,6 +69,9 @@ export const useStore = create<AppState>()(
       countries: [],
       products: [],
       analysis: {},
+      columnOrder: ['product', 'revenue', 'ads', 'serviceFees', 'productFees', 'deliveredOrders', 'profit'],
+
+      setColumnOrder: (order) => set({ columnOrder: order }),
 
       addCountry: (country) => set((state) => ({ 
         countries: [...state.countries, { ...country, id: uuidv4() }] 

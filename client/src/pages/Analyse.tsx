@@ -7,21 +7,103 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, GripHorizontal } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+interface Column {
+  id: string;
+  label: string;
+  align: 'left' | 'right' | 'center';
+  width?: string;
+  editable?: boolean;
+}
+
+const ALL_COLUMNS: Column[] = [
+  { id: 'product', label: 'Product', align: 'left', width: 'min-w-[200px]' },
+  { id: 'revenue', label: 'Revenue', align: 'right', width: 'w-[140px]', editable: true },
+  { id: 'ads', label: 'Ads', align: 'right', width: 'w-[140px]', editable: true },
+  { id: 'serviceFees', label: 'Service Fees', align: 'right', width: 'w-[140px]', editable: true },
+  { id: 'productFees', label: 'Prod. Fees', align: 'right', width: 'w-[140px]', editable: true },
+  { id: 'deliveredOrders', label: 'Delivered Order', align: 'right', width: 'w-[140px]', editable: true },
+  { id: 'profit', label: 'Profit', align: 'right', width: 'w-[140px]' },
+];
+
+function SortableHeader({ id, column }: { id: string, column: Column }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 'auto',
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <TableHead 
+      ref={setNodeRef} 
+      style={style} 
+      className={`${column.width} text-${column.align} ${id === 'profit' ? 'font-bold' : ''} bg-background group cursor-move select-none`}
+      {...attributes} 
+      {...listeners}
+    >
+      <div className="flex items-center gap-2 justify-end">
+         {column.align === 'left' && <span>{column.label}</span>}
+         <GripHorizontal className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground/60" />
+         {column.align !== 'left' && <span>{column.label}</span>}
+      </div>
+    </TableHead>
+  );
+}
 
 export default function Analyse() {
-  const { countries, products, analysis, updateAnalysis } = useStore();
+  const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder } = useStore();
   const [selectedCountryId, setSelectedCountryId] = useState<string>(countries[0]?.id || "");
   const [showDrafts, setShowDrafts] = useState(false);
+
+  // Initialize column order if empty (legacy support)
+  const currentColumnOrder = columnOrder && columnOrder.length > 0 ? columnOrder : ALL_COLUMNS.map(c => c.id);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const oldIndex = currentColumnOrder.indexOf(active.id as string);
+      const newIndex = currentColumnOrder.indexOf(over?.id as string);
+      setColumnOrder(arrayMove(currentColumnOrder, oldIndex, newIndex));
+    }
+  };
 
   // Fallback to first country if selected is invalid
   const activeCountryId = selectedCountryId || countries[0]?.id;
   const activeCountry = countries.find(c => c.id === activeCountryId);
 
-  // Filter products:
-  // 1. Must match status (Active or Show Drafts)
-  // 2. Must be assigned to selected country (check countryIds)
-  // Note: If countryIds is missing/undefined, assuming not assigned.
   const filteredProducts = products.filter(p => {
     const statusMatch = showDrafts || p.status === 'Active';
     const countryMatch = activeCountryId && p.countryIds && p.countryIds.includes(activeCountryId);
@@ -56,6 +138,7 @@ export default function Analyse() {
     const profit = revenue - ads - serviceFees - productFees;
     
     return {
+      id: p.id,
       product: p,
       revenue,
       ads,
@@ -76,14 +159,65 @@ export default function Analyse() {
   }), { revenue: 0, ads: 0, serviceFees: 0, productFees: 0, deliveredOrders: 0, profit: 0 });
 
   const totalOrders = rows.reduce((acc, row) => {
-    // If delivered orders is manually set > 0, use it. Otherwise fallback to revenue/price calculation.
     if (row.deliveredOrders > 0) return acc + row.deliveredOrders;
     if (row.product.price > 0) return acc + (row.revenue / row.product.price);
     return acc;
   }, 0);
 
-  const globalCPA = totalOrders > 0 ? totals.ads / totalOrders : 0;
   const globalMargin = totals.revenue > 0 ? (totals.profit / totals.revenue) * 100 : 0;
+
+  // Render Cell Helper
+  const renderCell = (row: any, columnId: string) => {
+    switch (columnId) {
+      case 'product':
+        return (
+          <TableCell key={columnId}>
+            <div className="font-medium">{row.product.name}</div>
+            <div className="text-xs text-muted-foreground font-mono">{row.product.sku}</div>
+          </TableCell>
+        );
+      case 'profit':
+        return (
+          <TableCell key={columnId} className="text-right font-mono font-medium">
+             <span className={row.profit > 0 ? 'text-green-600' : row.profit < 0 ? 'text-red-600' : 'text-muted-foreground'}>
+               {formatNumber(row.profit)}
+             </span>
+          </TableCell>
+        );
+      default:
+        // Editable fields
+        return (
+          <TableCell key={columnId} className="p-1">
+            <Input 
+              type="number" 
+              className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
+              value={row[columnId] || ''}
+              onChange={(e) => handleUpdate(row.product.id, columnId as any, e.target.value)}
+              placeholder="0"
+            />
+          </TableCell>
+        );
+    }
+  };
+
+  const renderTotalCell = (columnId: string) => {
+     switch (columnId) {
+       case 'product':
+         return <TableCell key={columnId}>Totals</TableCell>;
+       case 'profit':
+         return (
+           <TableCell key={columnId} className="text-right font-mono">
+             <span className={totals.profit > 0 ? 'text-green-600' : totals.profit < 0 ? 'text-red-600' : ''}>
+               {formatCurrency(totals.profit, activeCountry?.currency || 'USD')}
+             </span>
+           </TableCell>
+         );
+       default:
+         // @ts-ignore
+         const val = totals[columnId];
+         return <TableCell key={columnId} className="text-right font-mono">{formatNumber(val)}</TableCell>;
+     }
+  };
 
   if (!activeCountry) {
     return (
@@ -145,104 +279,47 @@ export default function Analyse() {
       </div>
 
       <div className="border rounded-md bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50 hover:bg-muted/50">
-                <TableHead className="min-w-[200px]">Product</TableHead>
-                <TableHead className="w-[140px] text-right">Revenue</TableHead>
-                <TableHead className="w-[140px] text-right">Ads</TableHead>
-                <TableHead className="w-[140px] text-right">Service Fees</TableHead>
-                <TableHead className="w-[140px] text-right">Prod. Fees</TableHead>
-                <TableHead className="w-[140px] text-right">Delivered Order</TableHead>
-                <TableHead className="w-[140px] text-right font-bold">Profit</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                     No products assigned to this country (or no active products).
-                  </TableCell>
+        <DndContext 
+          sensors={sensors} 
+          collisionDetection={closestCenter} 
+          onDragEnd={handleDragEnd}
+        >
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <SortableContext items={currentColumnOrder} strategy={horizontalListSortingStrategy}>
+                    {currentColumnOrder.map(colId => {
+                      const column = ALL_COLUMNS.find(c => c.id === colId);
+                      if (!column) return null;
+                      return <SortableHeader key={colId} id={colId} column={column} />;
+                    })}
+                  </SortableContext>
                 </TableRow>
-              ) : (
-                rows.map((row) => (
-                  <TableRow key={row.product.id}>
-                    <TableCell>
-                      <div className="font-medium">{row.product.name}</div>
-                      <div className="text-xs text-muted-foreground font-mono">{row.product.sku}</div>
-                    </TableCell>
-                    <TableCell className="p-1">
-                      <Input 
-                        type="number" 
-                        className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
-                        value={row.revenue || ''}
-                        onChange={(e) => handleUpdate(row.product.id, 'revenue', e.target.value)}
-                        placeholder="0"
-                      />
-                    </TableCell>
-                    <TableCell className="p-1">
-                      <Input 
-                        type="number" 
-                        className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
-                        value={row.ads || ''}
-                        onChange={(e) => handleUpdate(row.product.id, 'ads', e.target.value)}
-                        placeholder="0"
-                      />
-                    </TableCell>
-                    <TableCell className="p-1">
-                      <Input 
-                        type="number" 
-                        className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
-                        value={row.serviceFees || ''}
-                        onChange={(e) => handleUpdate(row.product.id, 'serviceFees', e.target.value)}
-                        placeholder="0"
-                      />
-                    </TableCell>
-                    <TableCell className="p-1">
-                      <Input 
-                        type="number" 
-                        className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
-                        value={row.productFees || ''}
-                        onChange={(e) => handleUpdate(row.product.id, 'productFees', e.target.value)}
-                        placeholder="0"
-                      />
-                    </TableCell>
-                    <TableCell className="p-1">
-                      <Input 
-                        type="number" 
-                        className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
-                        value={row.deliveredOrders || ''}
-                        onChange={(e) => handleUpdate(row.product.id, 'deliveredOrders', e.target.value)}
-                        placeholder="0"
-                      />
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-medium">
-                      <span className={row.profit > 0 ? 'text-green-600' : row.profit < 0 ? 'text-red-600' : 'text-muted-foreground'}>
-                        {formatNumber(row.profit)}
-                      </span>
+              </TableHeader>
+              <TableBody>
+                {rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={currentColumnOrder.length} className="h-24 text-center text-muted-foreground">
+                       No products assigned to this country (or no active products).
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-              {rows.length > 0 && (
-                <TableRow className="bg-muted/30 font-bold border-t-2">
-                  <TableCell>Totals</TableCell>
-                  <TableCell className="text-right font-mono">{formatNumber(totals.revenue)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatNumber(totals.ads)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatNumber(totals.serviceFees)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatNumber(totals.productFees)}</TableCell>
-                  <TableCell className="text-right font-mono">{formatNumber(totals.deliveredOrders)}</TableCell>
-                  <TableCell className="text-right font-mono">
-                    <span className={totals.profit > 0 ? 'text-green-600' : totals.profit < 0 ? 'text-red-600' : ''}>
-                      {formatCurrency(totals.profit, activeCountry.currency)}
-                    </span>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : (
+                  rows.map((row) => (
+                    <TableRow key={row.product.id}>
+                       {currentColumnOrder.map(colId => renderCell(row, colId))}
+                    </TableRow>
+                  ))
+                )}
+                {rows.length > 0 && (
+                  <TableRow className="bg-muted/30 font-bold border-t-2">
+                     {currentColumnOrder.map(colId => renderTotalCell(colId))}
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </DndContext>
       </div>
     </div>
   );
