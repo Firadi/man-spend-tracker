@@ -7,7 +7,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, GripHorizontal } from "lucide-react";
+import { AlertCircle, GripHorizontal, Save } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 import {
   DndContext,
   closestCenter,
@@ -82,6 +84,7 @@ export default function Analyse() {
   const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder, updateCountry } = useStore();
   const [selectedCountryId, setSelectedCountryId] = useState<string>(countries[0]?.id || "");
   const [showDrafts, setShowDrafts] = useState(false);
+  const { toast } = useToast();
 
   // Initialize column order if empty (legacy support)
   const currentColumnOrder = columnOrder && columnOrder.length > 0 ? columnOrder : ALL_COLUMNS.map(c => c.id);
@@ -366,12 +369,13 @@ export default function Analyse() {
                       return <SortableHeader key={colId} id={colId} column={column} />;
                     })}
                   </SortableContext>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={currentColumnOrder.length} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={currentColumnOrder.length + 1} className="h-24 text-center text-muted-foreground">
                        No products assigned to this country (or no active products).
                     </TableCell>
                   </TableRow>
@@ -379,12 +383,27 @@ export default function Analyse() {
                   rows.map((row) => (
                     <TableRow key={row.product.id}>
                        {currentColumnOrder.map(colId => renderCell(row, colId))}
+                       <TableCell className="p-1 text-center">
+                         <Button 
+                           variant="ghost" 
+                           size="icon" 
+                           className="h-8 w-8 text-muted-foreground hover:text-primary"
+                           onClick={() => toast({ 
+                             title: "Saved", 
+                             description: "Analysis updated successfully.",
+                             duration: 2000,
+                           })}
+                         >
+                           <Save className="w-4 h-4" />
+                         </Button>
+                       </TableCell>
                     </TableRow>
                   ))
                 )}
                 {rows.length > 0 && (
                   <TableRow className="bg-muted/30 font-bold border-t-2">
                      {currentColumnOrder.map(colId => renderTotalCell(colId))}
+                     <TableCell></TableCell>
                   </TableRow>
                 )}
               </TableBody>
