@@ -21,6 +21,7 @@ export interface Product {
   cost: number;
   price: number;
   image?: string;
+  countryIds: string[];
 }
 
 export interface AnalysisOverride {
@@ -76,11 +77,11 @@ export const useStore = create<AppState>()(
       })),
 
       addProduct: (product) => set((state) => ({
-        products: [...state.products, { ...product, id: uuidv4() }]
+        products: [...state.products, { ...product, id: uuidv4(), countryIds: product.countryIds || [] }]
       })),
 
       addProducts: (newProducts) => set((state) => ({
-        products: [...state.products, ...newProducts.map(p => ({ ...p, id: uuidv4() }))]
+        products: [...state.products, ...newProducts.map(p => ({ ...p, id: uuidv4(), countryIds: p.countryIds || [] }))]
       })),
 
       updateProduct: (id, data) => set((state) => ({
@@ -108,17 +109,20 @@ export const useStore = create<AppState>()(
 
       seed: () => {
         if (get().countries.length === 0) {
+          const usId = 'us';
+          const ukId = 'uk';
+          const deId = 'de';
           set({
             countries: [
-              { id: 'us', name: 'United States', currency: 'USD', defaultShipping: 5, defaultCod: 0, defaultReturn: 2 },
-              { id: 'uk', name: 'United Kingdom', currency: 'GBP', defaultShipping: 4, defaultCod: 0, defaultReturn: 1.5 },
-              { id: 'de', name: 'Germany', currency: 'EUR', defaultShipping: 4.5, defaultCod: 2, defaultReturn: 0 },
+              { id: usId, name: 'United States', currency: 'USD', defaultShipping: 5, defaultCod: 0, defaultReturn: 2 },
+              { id: ukId, name: 'United Kingdom', currency: 'GBP', defaultShipping: 4, defaultCod: 0, defaultReturn: 1.5 },
+              { id: deId, name: 'Germany', currency: 'EUR', defaultShipping: 4.5, defaultCod: 2, defaultReturn: 0 },
             ],
             products: [
-              { id: '1', sku: 'TSHIRT-BLK-M', name: 'Classic Black T-Shirt (M)', status: 'Active', cost: 5, price: 25 },
-              { id: '2', sku: 'MUG-WHT', name: 'Ceramic White Mug', status: 'Active', cost: 2, price: 12 },
-              { id: '3', sku: 'NB-LEA', name: 'Leather Notebook', status: 'Draft', cost: 8, price: 30 },
-              { id: '4', sku: 'PEN-GLD', name: 'Gold Ballpoint Pen', status: 'Active', cost: 1.5, price: 15 },
+              { id: '1', sku: 'TSHIRT-BLK-M', name: 'Classic Black T-Shirt (M)', status: 'Active', cost: 5, price: 25, countryIds: [usId, ukId] },
+              { id: '2', sku: 'MUG-WHT', name: 'Ceramic White Mug', status: 'Active', cost: 2, price: 12, countryIds: [usId] },
+              { id: '3', sku: 'NB-LEA', name: 'Leather Notebook', status: 'Draft', cost: 8, price: 30, countryIds: [usId, ukId, deId] },
+              { id: '4', sku: 'PEN-GLD', name: 'Gold Ballpoint Pen', status: 'Active', cost: 1.5, price: 15, countryIds: [ukId, deId] },
             ]
           });
         }

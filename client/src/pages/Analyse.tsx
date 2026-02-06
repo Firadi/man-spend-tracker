@@ -18,7 +18,15 @@ export default function Analyse() {
   const activeCountryId = selectedCountryId || countries[0]?.id;
   const activeCountry = countries.find(c => c.id === activeCountryId);
 
-  const filteredProducts = products.filter(p => showDrafts || p.status === 'Active');
+  // Filter products:
+  // 1. Must match status (Active or Show Drafts)
+  // 2. Must be assigned to selected country (check countryIds)
+  // Note: If countryIds is missing/undefined, assuming not assigned.
+  const filteredProducts = products.filter(p => {
+    const statusMatch = showDrafts || p.status === 'Active';
+    const countryMatch = activeCountryId && p.countryIds && p.countryIds.includes(activeCountryId);
+    return statusMatch && countryMatch;
+  });
 
   const getAnalysisValue = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees') => {
     if (!activeCountryId) return 0;
@@ -64,18 +72,12 @@ export default function Analyse() {
     profit: acc.profit + row.profit,
   }), { revenue: 0, ads: 0, serviceFees: 0, productFees: 0, profit: 0 });
 
-  // Simple KPI summary
-  // CPA = Ads / (Revenue / Price) -> assuming Revenue = Price * Orders. 
-  // Orders = Revenue / Price (if Price > 0)
-  // CPA = Ads / Orders
-  
   const totalOrders = rows.reduce((acc, row) => {
     if (row.product.price > 0) return acc + (row.revenue / row.product.price);
     return acc;
   }, 0);
 
   const globalCPA = totalOrders > 0 ? totals.ads / totalOrders : 0;
-  const globalROAS = totals.ads > 0 ? totals.revenue / totals.ads : 0;
   const globalMargin = totals.revenue > 0 ? (totals.profit / totals.revenue) * 100 : 0;
 
   if (!activeCountry) {
@@ -151,67 +153,77 @@ export default function Analyse() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((row) => (
-                <TableRow key={row.product.id}>
-                  <TableCell>
-                    <div className="font-medium">{row.product.name}</div>
-                    <div className="text-xs text-muted-foreground font-mono">{row.product.sku}</div>
+              {rows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                     No products assigned to this country (or no active products).
                   </TableCell>
-                  <TableCell className="p-1">
-                    <Input 
-                      type="number" 
-                      className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
-                      value={row.revenue || ''}
-                      onChange={(e) => handleUpdate(row.product.id, 'revenue', e.target.value)}
-                      placeholder="0"
-                    />
-                  </TableCell>
-                  <TableCell className="p-1">
-                    <Input 
-                      type="number" 
-                      className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
-                      value={row.ads || ''}
-                      onChange={(e) => handleUpdate(row.product.id, 'ads', e.target.value)}
-                      placeholder="0"
-                    />
-                  </TableCell>
-                  <TableCell className="p-1">
-                    <Input 
-                      type="number" 
-                      className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
-                      value={row.serviceFees || ''}
-                      onChange={(e) => handleUpdate(row.product.id, 'serviceFees', e.target.value)}
-                      placeholder="0"
-                    />
-                  </TableCell>
-                  <TableCell className="p-1">
-                    <Input 
-                      type="number" 
-                      className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
-                      value={row.productFees || ''}
-                      onChange={(e) => handleUpdate(row.product.id, 'productFees', e.target.value)}
-                      placeholder="0"
-                    />
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-medium">
-                    <span className={row.profit > 0 ? 'text-green-600' : row.profit < 0 ? 'text-red-600' : 'text-muted-foreground'}>
-                      {formatNumber(row.profit)}
+                </TableRow>
+              ) : (
+                rows.map((row) => (
+                  <TableRow key={row.product.id}>
+                    <TableCell>
+                      <div className="font-medium">{row.product.name}</div>
+                      <div className="text-xs text-muted-foreground font-mono">{row.product.sku}</div>
+                    </TableCell>
+                    <TableCell className="p-1">
+                      <Input 
+                        type="number" 
+                        className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
+                        value={row.revenue || ''}
+                        onChange={(e) => handleUpdate(row.product.id, 'revenue', e.target.value)}
+                        placeholder="0"
+                      />
+                    </TableCell>
+                    <TableCell className="p-1">
+                      <Input 
+                        type="number" 
+                        className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
+                        value={row.ads || ''}
+                        onChange={(e) => handleUpdate(row.product.id, 'ads', e.target.value)}
+                        placeholder="0"
+                      />
+                    </TableCell>
+                    <TableCell className="p-1">
+                      <Input 
+                        type="number" 
+                        className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
+                        value={row.serviceFees || ''}
+                        onChange={(e) => handleUpdate(row.product.id, 'serviceFees', e.target.value)}
+                        placeholder="0"
+                      />
+                    </TableCell>
+                    <TableCell className="p-1">
+                      <Input 
+                        type="number" 
+                        className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
+                        value={row.productFees || ''}
+                        onChange={(e) => handleUpdate(row.product.id, 'productFees', e.target.value)}
+                        placeholder="0"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-medium">
+                      <span className={row.profit > 0 ? 'text-green-600' : row.profit < 0 ? 'text-red-600' : 'text-muted-foreground'}>
+                        {formatNumber(row.profit)}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+              {rows.length > 0 && (
+                <TableRow className="bg-muted/30 font-bold border-t-2">
+                  <TableCell>Totals</TableCell>
+                  <TableCell className="text-right font-mono">{formatNumber(totals.revenue)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatNumber(totals.ads)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatNumber(totals.serviceFees)}</TableCell>
+                  <TableCell className="text-right font-mono">{formatNumber(totals.productFees)}</TableCell>
+                  <TableCell className="text-right font-mono">
+                    <span className={totals.profit > 0 ? 'text-green-600' : totals.profit < 0 ? 'text-red-600' : ''}>
+                      {formatCurrency(totals.profit, activeCountry.currency)}
                     </span>
                   </TableCell>
                 </TableRow>
-              ))}
-              <TableRow className="bg-muted/30 font-bold border-t-2">
-                <TableCell>Totals</TableCell>
-                <TableCell className="text-right font-mono">{formatNumber(totals.revenue)}</TableCell>
-                <TableCell className="text-right font-mono">{formatNumber(totals.ads)}</TableCell>
-                <TableCell className="text-right font-mono">{formatNumber(totals.serviceFees)}</TableCell>
-                <TableCell className="text-right font-mono">{formatNumber(totals.productFees)}</TableCell>
-                <TableCell className="text-right font-mono">
-                  <span className={totals.profit > 0 ? 'text-green-600' : totals.profit < 0 ? 'text-red-600' : ''}>
-                    {formatCurrency(totals.profit, activeCountry.currency)}
-                  </span>
-                </TableCell>
-              </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
