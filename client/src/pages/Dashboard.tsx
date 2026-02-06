@@ -6,7 +6,7 @@ import { useState, useMemo } from "react";
 import { ArrowUpRight, ArrowDownRight, DollarSign, TrendingUp, ShoppingCart, CreditCard } from "lucide-react";
 
 export default function Dashboard() {
-  const { countries, analysis } = useStore();
+  const { countries, products, analysis } = useStore();
   const [selectedCountryId, setSelectedCountryId] = useState<string>("all");
 
   const stats = useMemo(() => {
@@ -21,12 +21,30 @@ export default function Dashboard() {
       : countries.filter(c => c.id === selectedCountryId);
 
     countriesToProcess.forEach(country => {
-      const countryData = analysis[country.id] || {};
-      Object.values(countryData).forEach(prodStats => {
-        totalRevenue += prodStats.revenue || 0;
-        totalAds += prodStats.ads || 0;
-        totalFees += (prodStats.serviceFees || 0) + (prodStats.productFees || 0);
-        // Profit calculation handled below
+      // Filter for Active products in this country
+      const countryProducts = products.filter(p => 
+        p.status === 'Active' && p.countryIds && p.countryIds.includes(country.id)
+      );
+
+      countryProducts.forEach(product => {
+        const countryData = analysis[country.id] || {};
+        const prodStats = countryData[product.id] || {};
+
+        const revenue = prodStats.revenue || 0;
+        const ads = prodStats.ads || 0;
+        const productFees = prodStats.productFees || 0;
+        const deliveredOrders = prodStats.deliveredOrders || 0;
+
+        // Service Fees Logic (match Analyse.tsx defaults)
+        let serviceFees = prodStats.serviceFees;
+        if (serviceFees === undefined) {
+          const feePerOrder = (country.defaultShipping || 0) + (country.defaultCod || 0) + (country.defaultReturn || 0);
+          serviceFees = deliveredOrders * feePerOrder;
+        }
+
+        totalRevenue += revenue;
+        totalAds += ads;
+        totalFees += (serviceFees || 0) + productFees;
       });
     });
 
@@ -36,7 +54,7 @@ export default function Dashboard() {
     const displayCurrency = selectedCountryId === "all" ? "USD" : countries.find(c => c.id === selectedCountryId)?.currency || "USD";
 
     return { totalRevenue, totalAds, totalFees, totalProfit, displayCurrency };
-  }, [selectedCountryId, countries, analysis]);
+  }, [selectedCountryId, countries, products, analysis]);
 
   return (
     <div className="space-y-8">
