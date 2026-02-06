@@ -506,7 +506,10 @@ export default function Analyse() {
                   </TableRow>
                 ) : (
                   rows.map((row) => (
-                    <TableRow key={row.product.id}>
+                    <TableRow 
+                      key={row.product.id}
+                      className={row.profit < 0 ? "bg-red-50 hover:bg-red-50/90" : ""}
+                    >
                        {currentColumnOrder.map(colId => renderCell(row, colId))}
                        <TableCell className="p-1 text-center whitespace-nowrap">
                          <div className="flex items-center justify-center gap-1">
