@@ -154,7 +154,7 @@ export default function Analyse() {
                 <TableHead className="w-[140px] text-right">Ads</TableHead>
                 <TableHead className="w-[140px] text-right">Service Fees</TableHead>
                 <TableHead className="w-[140px] text-right">Prod. Fees</TableHead>
-                <TableHead className="w-[140px] text-right">Delivered</TableHead>
+                <TableHead className="w-[140px] text-right">Delivered Order</TableHead>
                 <TableHead className="w-[140px] text-right font-bold">Profit</TableHead>
               </TableRow>
             </TableHeader>
