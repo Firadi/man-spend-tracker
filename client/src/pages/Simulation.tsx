@@ -378,8 +378,9 @@ export default function Simulation() {
                   {results && (
                     <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
                       <DialogTrigger asChild>
-                        <Button variant="secondary" className="flex-none gap-2 hover:bg-blue-500/10 hover:text-blue-500 border border-transparent hover:border-blue-500/20">
+                        <Button variant="outline" className="flex-1 gap-2 hover:bg-blue-500/10 hover:text-blue-500 border-blue-200/20">
                           <Save className="w-4 h-4" />
+                          Save Result
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
