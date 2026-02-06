@@ -14,14 +14,14 @@ import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
   console.log("AuthPage mounting");
-  const { user, loginMutation, registerMutation } = useAuth();
+  const { user, loginMutation, registerMutation, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (user) {
+    if (user && !isLoading) {
       setLocation("/");
     }
-  }, [user, setLocation]);
+  }, [user, isLoading, setLocation]);
 
   const loginForm = useForm<z.infer<typeof insertUserSchema>>({
     resolver: zodResolver(insertUserSchema),
@@ -33,8 +33,16 @@ export default function AuthPage() {
     defaultValues: { username: "", password: "" },
   });
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   if (user) {
-    return null;
+    return null; // Will redirect
   }
 
   return (
