@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from './queryClient';
 
 export type ProductStatus = 'Draft' | 'Active';
 
@@ -35,7 +35,6 @@ export interface AnalysisOverride {
   ordersConfirmed?: number;
 }
 
-// Map: CountryID -> ProductID -> Override
 export interface AnalysisState {
   [countryId: string]: {
     [productId: string]: AnalysisOverride;
@@ -72,7 +71,6 @@ interface AppState {
   analysis: AnalysisState;
   simulations: SimulationData[];
 
-  // Fetch Actions
   fetchData: () => Promise<void>;
 
   addCountry: (country: Omit<Country, 'id'>) => Promise<void>;
@@ -87,16 +85,12 @@ interface AppState {
 
   updateAnalysis: (countryId: string, productId: string, data: AnalysisOverride) => Promise<void>;
   
-  // Simulations
   saveSimulation: (simulation: Omit<SimulationData, 'id' | 'date'>) => Promise<void>;
   deleteSimulation: (id: string) => Promise<void>;
 
-  // Column reordering
   columnOrder: string[];
   setColumnOrder: (order: string[]) => void;
 
-
-  // Sidebar state
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
   
@@ -125,34 +119,39 @@ export const useStore = create<AppState>((set, get) => ({
       sidebarCollapsed: false,
 
       fetchData: async () => {
-        // Mock data initialization
-        if (get().countries.length === 0) {
-          const dummyCountries: Country[] = [
-            { id: '1', name: 'United States', currency: 'USD', code: 'US', defaultShipping: 5, defaultCod: 0, defaultReturn: 2 },
-            { id: '2', name: 'Germany', currency: 'EUR', code: 'DE', defaultShipping: 4, defaultCod: 1, defaultReturn: 3 },
-          ];
+        try {
+          const [countriesRes, productsRes, analysisRes, simulationsRes] = await Promise.all([
+            apiRequest("GET", "/api/countries"),
+            apiRequest("GET", "/api/products"),
+            apiRequest("GET", "/api/analysis"),
+            apiRequest("GET", "/api/simulations")
+          ]);
           
-          const dummyProducts: Product[] = [
-            { id: '1', sku: 'SKU-001', name: 'Wireless Headphones', status: 'Active', cost: 15, price: 59, countryIds: ['1', '2'] },
-            { id: '2', sku: 'SKU-002', name: 'Smartphone Stand', status: 'Draft', cost: 2, price: 15, countryIds: ['1'] },
-          ];
-          
-          set({ countries: dummyCountries, products: dummyProducts });
+          const countries = await countriesRes.json();
+          const products = await productsRes.json();
+          const analysis = await analysisRes.json();
+          const simulations = await simulationsRes.json();
+
+          set({ countries, products, analysis, simulations });
+        } catch (error) {
+          console.error("Failed to fetch data:", error);
         }
       },
 
       saveSimulation: async (simulation) => {
-        const saved = {
+        const res = await apiRequest("POST", "/api/simulations", {
           ...simulation,
           id: uuidv4(),
           date: new Date().toISOString()
-        };
+        });
+        const saved = await res.json();
         set((state) => ({
           simulations: [saved, ...(state.simulations || [])]
         }));
       },
 
       deleteSimulation: async (id) => {
+        await apiRequest("DELETE", `/api/simulations/${id}`);
         set((state) => ({
           simulations: state.simulations.filter((s) => s.id !== id)
         }));
@@ -162,19 +161,23 @@ export const useStore = create<AppState>((set, get) => ({
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
       addCountry: async (country) => {
-        const saved = { ...country, id: uuidv4() };
+        const res = await apiRequest("POST", "/api/countries", { ...country, id: uuidv4() });
+        const saved = await res.json();
         set((state) => ({  
           countries: [...state.countries, saved] 
         }));
       },
       
       updateCountry: async (id, data) => {
+        const res = await apiRequest("PUT", `/api/countries/${id}`, data);
+        const updated = await res.json();
         set((state) => ({
-          countries: state.countries.map((c) => c.id === id ? { ...c, ...data } : c)
+          countries: state.countries.map((c) => c.id === id ? updated : c)
         }));
       },
       
       deleteCountry: async (id) => {
+        await apiRequest("DELETE", `/api/countries/${id}`);
         set((state) => ({
           countries: state.countries.filter((c) => c.id !== id),
           products: state.products.map(p => ({
@@ -185,38 +188,46 @@ export const useStore = create<AppState>((set, get) => ({
       },
 
       addProduct: async (product) => {
-        const saved = { ...product, id: uuidv4(), countryIds: product.countryIds || [] };
+        const res = await apiRequest("POST", "/api/products", { ...product, id: uuidv4(), countryIds: product.countryIds || [] });
+        const saved = await res.json();
         set((state) => ({
           products: [...state.products, saved]
         }));
       },
 
       addProducts: async (newProducts) => {
-        const savedProducts = newProducts.map(p => ({ ...p, id: uuidv4(), countryIds: p.countryIds || [] }));
-        set((state) => ({
-          products: [...state.products, ...savedProducts]
-        }));
+        await Promise.all(newProducts.map(p => 
+          apiRequest("POST", "/api/products", { ...p, id: uuidv4(), countryIds: p.countryIds || [] })
+        ));
+        await get().fetchData();
       },
 
       updateProduct: async (id, data) => {
+        const res = await apiRequest("PUT", `/api/products/${id}`, data);
+        const updated = await res.json();
         set((state) => ({
-          products: state.products.map((p) => p.id === id ? { ...p, ...data } : p)
+          products: state.products.map((p) => p.id === id ? updated : p)
         }));
       },
 
       deleteProduct: async (id) => {
+        await apiRequest("DELETE", `/api/products/${id}`);
         set((state) => ({
           products: state.products.filter((p) => p.id !== id)
         }));
       },
 
       deleteProducts: async (ids) => {
+        await Promise.all(ids.map(id => apiRequest("DELETE", `/api/products/${id}`)));
         set((state) => ({
           products: state.products.filter((p) => !ids.includes(p.id))
         }));
       },
 
       updateAnalysis: async (countryId, productId, data) => {
+        const res = await apiRequest("POST", `/api/analysis/${countryId}/${productId}`, data);
+        const saved = await res.json();
+        
         set((state) => {
           const countryAnalysis = state.analysis[countryId] || {};
           const productAnalysis = countryAnalysis[productId] || {};

@@ -96,14 +96,10 @@ export function setupAuth(app: Express) {
     });
   });
 
-  console.log("Setting up /api/user route");
   app.get("/api/user", (req, res) => {
-    console.log("Hit /api/user");
     if (!req.isAuthenticated()) {
-        console.log("Not authenticated");
-        return res.sendStatus(401);
+      return res.sendStatus(401);
     }
-    console.log("Authenticated user:", req.user);
     res.json(req.user);
   });
 }
