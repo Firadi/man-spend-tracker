@@ -573,7 +573,20 @@ export default function Analyse() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                 <Card className="bg-muted/30">
+                    <CardHeader className="p-4 pb-2">
+                       <CardTitle className="text-sm font-medium text-muted-foreground">CPA</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                       <div className="text-2xl font-bold">
+                         {viewProduct.deliveredOrders > 0 
+                           ? formatCurrency(viewProduct.ads / viewProduct.deliveredOrders, activeCountry?.currency || 'USD')
+                           : '-'}
+                       </div>
+                       <p className="text-xs text-muted-foreground">Ads / Delivered Orders</p>
+                    </CardContent>
+                 </Card>
                  <Card className="bg-muted/30">
                     <CardHeader className="p-4 pb-2">
                        <CardTitle className="text-sm font-medium text-muted-foreground">CPAD</CardTitle>
