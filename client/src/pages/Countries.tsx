@@ -12,6 +12,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const countrySchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -26,6 +36,8 @@ export default function Countries() {
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [countryToDelete, setCountryToDelete] = useState<string | null>(null);
 
   const form = useForm<z.infer<typeof countrySchema>>({
     resolver: zodResolver(countrySchema),
@@ -63,10 +75,17 @@ export default function Countries() {
     setIsOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this country?")) {
-      deleteCountry(id);
+  const confirmDelete = (id: string) => {
+    setCountryToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const executeDelete = () => {
+    if (countryToDelete) {
+      deleteCountry(countryToDelete);
       toast({ title: "Country deleted" });
+      setCountryToDelete(null);
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -206,7 +225,7 @@ export default function Countries() {
                 <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(country)}>
                   <Pencil className="w-4 h-4 mr-2" /> Edit
                 </Button>
-                <Button variant="destructive" size="sm" className="flex-1" onClick={() => handleDelete(country.id)}>
+                <Button variant="destructive" size="sm" className="flex-1" onClick={() => confirmDelete(country.id)}>
                   <Trash2 className="w-4 h-4 mr-2" /> Delete
                 </Button>
               </div>
@@ -220,6 +239,23 @@ export default function Countries() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the country and remove it from any assigned products.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

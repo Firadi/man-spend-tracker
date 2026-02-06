@@ -74,7 +74,12 @@ export const useStore = create<AppState>()(
       })),
       
       deleteCountry: (id) => set((state) => ({
-        countries: state.countries.filter((c) => c.id !== id)
+        countries: state.countries.filter((c) => c.id !== id),
+        // Clean up product assignments for the deleted country
+        products: state.products.map(p => ({
+          ...p,
+          countryIds: p.countryIds ? p.countryIds.filter(cid => cid !== id) : []
+        }))
       })),
 
       addProduct: (product) => set((state) => ({
