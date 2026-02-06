@@ -489,16 +489,13 @@ export default function Analyse() {
           <TableCell key={columnId}>
             <div className="font-medium flex items-center gap-2">
               {row.product.name}
-              {activeCountry && (
-                <span className="text-[10px] font-normal text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border flex items-center gap-1">
-                  {activeCountry.code && (
+              {activeCountry && activeCountry.code && (
+                <span className="bg-muted/50 px-1.5 py-0.5 rounded border flex items-center" title={activeCountry.name}>
                     <img 
                       src={`https://flagcdn.com/w20/${activeCountry.code.toLowerCase()}.png`} 
-                      className="h-2 w-auto rounded-[1px]" 
-                      alt="" 
+                      className="h-3 w-auto rounded-[1px]" 
+                      alt={activeCountry.name} 
                     />
-                  )}
-                  {activeCountry.name}
                 </span>
               )}
             </div>
