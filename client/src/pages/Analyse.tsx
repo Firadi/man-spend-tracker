@@ -724,15 +724,6 @@ export default function Analyse() {
                    Default Fees ({activeCountry.currency}):
                 </div>
                 <div className="flex flex-wrap gap-4 w-full">
-                   {activeCountry.code && (
-                     <div className="flex items-center gap-2 mr-2">
-                        <img 
-                          src={`https://flagcdn.com/w40/${activeCountry.code.toLowerCase()}.png`} 
-                          alt={activeCountry.name}
-                          className="h-8 w-auto rounded shadow-sm border"
-                        />
-                     </div>
-                   )}
                    <div className="flex items-center gap-2">
                       <Label htmlFor="shipping" className="text-xs">Shipping</Label>
                       <Input 
