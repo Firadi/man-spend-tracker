@@ -7,20 +7,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AlertCircle, GripHorizontal, Save, Eye, Download, FileSpreadsheet, FileImage, FileType, Search, Filter } from "lucide-react";
+import { AlertCircle, GripHorizontal, Save, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import * as XLSX from 'xlsx';
-import * as htmlToImage from 'html-to-image';
-import { jsPDF } from 'jspdf';
 import {
   Dialog,
   DialogContent,
@@ -67,7 +56,6 @@ const ALL_COLUMNS: Column[] = [
   { id: 'serviceFees', label: 'Service Fees', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'productFees', label: 'Prod. Fees', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'profit', label: 'Profit', align: 'right', width: 'w-[140px]' },
-  { id: 'margin', label: 'Margin', align: 'right', width: 'w-[100px]' },
 ];
 
 function CircularProgress({ value, size = 40, strokeWidth = 3 }: { value: number, size?: number, strokeWidth?: number }) {
@@ -148,117 +136,8 @@ export default function Analyse() {
   const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder, updateCountry } = useStore();
   const [selectedCountryId, setSelectedCountryId] = useState<string>(countries[0]?.id || "");
   const [showDrafts, setShowDrafts] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [profitFilter, setProfitFilter] = useState<'all' | 'profitable' | 'loss'>('all');
   const [viewProduct, setViewProduct] = useState<any | null>(null);
   const { toast } = useToast();
-
-  const handleExportExcel = () => {
-    if (!activeCountry) return;
-
-    // Prepare data
-    const exportData = rows.map(row => ({
-      Product: row.product.name,
-      SKU: row.product.sku,
-      'Total Orders': row.totalOrders,
-      'Orders Confirmed': row.ordersConfirmed,
-      'Conf. Rate (%)': `${row.confirmationRate.toFixed(1)}%`,
-      'Delivered Orders': row.deliveredOrders,
-      'Del. Rate (%)': `${row.deliveryRate.toFixed(1)}%`,
-      'Del. Rate/Lead (%)': `${row.deliveryRatePerLead.toFixed(1)}%`,
-      'Revenue': row.revenue,
-      'Ads': row.ads,
-      'Service Fees': row.serviceFees,
-      'Product Fees': row.productFees,
-      'Profit': row.profit,
-      'Margin': `${row.margin.toFixed(1)}%`
-    }));
-
-    // Add totals row
-    exportData.push({
-      Product: 'TOTALS',
-      SKU: '',
-      'Total Orders': totals.totalOrders,
-      'Orders Confirmed': totals.ordersConfirmed,
-      'Conf. Rate (%)': `${globalConfirmationRate.toFixed(1)}%`,
-      'Delivered Orders': totals.deliveredOrders,
-      'Del. Rate (%)': `${globalDeliveryRate.toFixed(1)}%`,
-      'Del. Rate/Lead (%)': `${globalDeliveryRatePerLead.toFixed(1)}%`,
-      'Revenue': totals.revenue,
-      'Ads': totals.ads,
-      'Service Fees': totals.serviceFees,
-      'Product Fees': totals.productFees,
-      'Profit': totals.profit,
-      'Margin': `${globalMargin.toFixed(1)}%`
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Analysis");
-    
-    // Auto-width columns roughly
-    const wscols = [
-      { wch: 30 }, // Product
-      { wch: 15 }, // SKU
-      { wch: 12 }, // Total Orders
-      { wch: 15 }, // Orders Confirmed
-      { wch: 15 }, // Conf Rate
-      { wch: 15 }, // Delivered
-      { wch: 15 }, // Del Rate
-      { wch: 15 }, // Del Rate/Lead
-      { wch: 12 }, // Revenue
-      { wch: 12 }, // Ads
-      { wch: 12 }, // Service Fees
-      { wch: 12 }, // Prod Fees
-      { wch: 12 }, // Profit
-      { wch: 12 }, // Margin
-    ];
-    worksheet['!cols'] = wscols;
-
-    XLSX.writeFile(workbook, `analysis_${activeCountry.name}_${new Date().toISOString().split('T')[0]}.xlsx`);
-    
-    toast({ title: "Exported to Excel", description: "File downloaded successfully." });
-  };
-
-  const handleExportPDF = async () => {
-    const node = document.getElementById('analyse-table-container');
-    if (!node) return;
-
-    try {
-      const dataUrl = await htmlToImage.toPng(node, { backgroundColor: '#ffffff' });
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-        format: [node.scrollWidth + 40, node.scrollHeight + 40] // Custom size to fit table
-      });
-      
-      pdf.addImage(dataUrl, 'PNG', 20, 20, node.scrollWidth, node.scrollHeight);
-      pdf.save(`analysis_snapshot_${new Date().toISOString().split('T')[0]}.pdf`);
-      
-      toast({ title: "Exported to PDF", description: "Snapshot downloaded successfully." });
-    } catch (error) {
-      console.error('PDF export failed', error);
-      toast({ title: "Export Failed", description: "Could not generate PDF snapshot.", variant: "destructive" });
-    }
-  };
-
-  const handleExportSVG = async () => {
-    const node = document.getElementById('analyse-table-container');
-    if (!node) return;
-
-    try {
-      const dataUrl = await htmlToImage.toSvg(node, { backgroundColor: '#ffffff' });
-      const link = document.createElement('a');
-      link.download = `analysis_snapshot_${new Date().toISOString().split('T')[0]}.svg`;
-      link.href = dataUrl;
-      link.click();
-      
-      toast({ title: "Exported to SVG", description: "Snapshot downloaded successfully." });
-    } catch (error) {
-      console.error('SVG export failed', error);
-      toast({ title: "Export Failed", description: "Could not generate SVG snapshot.", variant: "destructive" });
-    }
-  };
 
   // Fix for persisted legacy column order:
   // If the persisted columnOrder is missing any of the current ALL_COLUMNS (newly added ones),
@@ -327,7 +206,7 @@ export default function Analyse() {
   };
 
   // Calculations
-  const calculatedRows = filteredProducts.map(p => {
+  const rows = filteredProducts.map(p => {
     const revenue = getAnalysisValue(p.id, 'revenue');
     const ads = getAnalysisValue(p.id, 'ads');
     const serviceFees = getAnalysisValue(p.id, 'serviceFees');
@@ -345,7 +224,6 @@ export default function Analyse() {
     const deliveryRatePerLead = totalOrders > 0 ? (deliveredOrders / totalOrders) * 100 : 0;
 
     const profit = revenue - ads - serviceFees - productFees;
-    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
     
     return {
       id: p.id,
@@ -360,21 +238,8 @@ export default function Analyse() {
       confirmationRate,
       deliveryRate,
       deliveryRatePerLead,
-      profit,
-      margin
+      profit
     };
-  });
-
-  const rows = calculatedRows.filter(row => {
-    const searchMatch = !searchQuery || 
-      row.product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      row.product.sku.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    let profitMatch = true;
-    if (profitFilter === 'profitable') profitMatch = row.profit > 0;
-    if (profitFilter === 'loss') profitMatch = row.profit < 0;
-
-    return searchMatch && profitMatch;
   });
 
   const totals = rows.reduce((acc, row) => ({
@@ -395,10 +260,6 @@ export default function Analyse() {
 
   // CPA Calculation: ADS / DELIVERED ORDER
   const globalCPA = totals.deliveredOrders > 0 ? totals.ads / totals.deliveredOrders : 0;
-  // CPAD: Same as CPA (Ads / Delivered Orders)
-  const globalCPAD = globalCPA;
-  // CPD: Total Costs (Ads + Service Fees + Product Fees) / Delivered Orders
-  const globalCPD = totals.deliveredOrders > 0 ? (totals.ads + totals.serviceFees + totals.productFees) / totals.deliveredOrders : 0;
   
   // Also updating the "Est. Orders" card to just show Delivered Orders for clarity, 
   // or should it remain "Est. Orders" (calculated)?
@@ -437,14 +298,6 @@ export default function Analyse() {
              </span>
           </TableCell>
         );
-      case 'margin':
-        return (
-          <TableCell key={columnId} className="text-right font-mono font-medium">
-             <span className={row.margin > 0 ? 'text-green-600' : row.margin < 0 ? 'text-red-600' : 'text-muted-foreground'}>
-               {row.margin.toFixed(1)}%
-             </span>
-          </TableCell>
-        );
       case 'confirmationRate':
       case 'deliveryRate':
       case 'deliveryRatePerLead':
@@ -460,10 +313,10 @@ export default function Analyse() {
       default:
         // Editable fields
         return (
-          <TableCell key={columnId} className="p-0">
+          <TableCell key={columnId} className="p-1">
             <Input 
               type="number" 
-              className="w-full h-10 text-right font-mono bg-transparent border-none shadow-none focus-visible:ring-0 rounded-none px-4"
+              className="text-right h-8 font-mono bg-transparent border-transparent hover:border-input focus:border-ring"
               value={row[columnId] || ''}
               onChange={(e) => handleUpdate(row.product.id, columnId as any, e.target.value)}
               placeholder="0"
@@ -482,14 +335,6 @@ export default function Analyse() {
            <TableCell key={columnId} className="text-right font-mono">
              <span className={totals.profit > 0 ? 'text-green-600' : totals.profit < 0 ? 'text-red-600' : ''}>
                {formatCurrency(totals.profit, activeCountry?.currency || 'USD')}
-             </span>
-           </TableCell>
-         );
-       case 'margin':
-         return (
-           <TableCell key={columnId} className="text-right font-mono font-bold">
-             <span className={globalMargin > 0 ? 'text-green-600' : globalMargin < 0 ? 'text-red-600' : ''}>
-               {globalMargin.toFixed(1)}%
              </span>
            </TableCell>
          );
@@ -535,82 +380,28 @@ export default function Analyse() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Analyse</h2>
-            <p className="text-muted-foreground">Profitability analysis for {activeCountry.name}.</p>
-          </div>
-          
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center space-x-2">
-              <Switch id="drafts" checked={showDrafts} onCheckedChange={setShowDrafts} />
-              <Label htmlFor="drafts">Show Drafts</Label>
-            </div>
-            
-            <Select value={activeCountryId} onValueChange={setSelectedCountryId}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select Country" />
-              </SelectTrigger>
-              <SelectContent>
-                {countries.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name} ({c.currency})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-1">
-                  <Download className="h-4 w-4" />
-                  <span className="hidden sm:inline">Export</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Export Options</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleExportExcel}>
-                  <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  <span>Excel (.xlsx)</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportPDF}>
-                  <FileImage className="mr-2 h-4 w-4" />
-                  <span>PDF Snapshot</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportSVG}>
-                  <FileType className="mr-2 h-4 w-4" />
-                  <span>SVG Snapshot</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Analyse</h2>
+          <p className="text-muted-foreground">Profitability analysis for {activeCountry.name}.</p>
         </div>
-
-        <div className="flex flex-col sm:flex-row gap-4 items-center">
-          <div className="relative w-full sm:w-[300px]">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Filter products..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+        
+        <div className="flex items-center gap-4">
+          <div className="flex items-center space-x-2">
+            <Switch id="drafts" checked={showDrafts} onCheckedChange={setShowDrafts} />
+            <Label htmlFor="drafts">Show Drafts</Label>
           </div>
           
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-             <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
-             <Select value={profitFilter} onValueChange={(val: any) => setProfitFilter(val)}>
-               <SelectTrigger className="w-[180px]">
-                 <SelectValue placeholder="Profitability" />
-               </SelectTrigger>
-               <SelectContent>
-                 <SelectItem value="all">All Profitability</SelectItem>
-                 <SelectItem value="profitable">Profitable Only</SelectItem>
-                 <SelectItem value="loss">Loss Only</SelectItem>
-               </SelectContent>
-             </Select>
-          </div>
+          <Select value={activeCountryId} onValueChange={setSelectedCountryId}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Country" />
+            </SelectTrigger>
+            <SelectContent>
+              {countries.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.name} ({c.currency})</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -661,58 +452,32 @@ export default function Analyse() {
         </Card>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-         {/* Row 1 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+         <Card className="p-4 bg-primary/5 border-primary/10">
+           <p className="text-sm font-medium text-muted-foreground">Total Profit</p>
+           <p className={`text-2xl font-bold ${totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+             {formatCurrency(totals.profit, activeCountry.currency)}
+           </p>
+         </Card>
          <Card className="p-4">
            <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
            <p className="text-2xl font-bold">{formatCurrency(totals.revenue, activeCountry.currency)}</p>
          </Card>
          <Card className="p-4">
-           <p className="text-sm font-medium text-muted-foreground">Total Service Fees</p>
-           <p className="text-2xl font-bold">{formatCurrency(totals.serviceFees, activeCountry.currency)}</p>
-         </Card>
-         <Card className="p-4">
-           <p className="text-sm font-medium text-muted-foreground">Total Ads</p>
-           <p className="text-2xl font-bold">{formatCurrency(totals.ads, activeCountry.currency)}</p>
-         </Card>
-         <Card className="p-4">
-           <p className="text-sm font-medium text-muted-foreground">Total Product Fees</p>
-           <p className="text-2xl font-bold">{formatCurrency(totals.productFees, activeCountry.currency)}</p>
-         </Card>
-
-         {/* Row 2 */}
-         <Card className="p-4">
-           <p className="text-sm font-medium text-muted-foreground">CPA</p>
+           <p className="text-sm font-medium text-muted-foreground">Global CPA</p>
            <p className="text-2xl font-bold">
              {totals.deliveredOrders > 0 ? formatCurrency(globalCPA, activeCountry.currency) : '-'}
            </p>
          </Card>
          <Card className="p-4">
-           <p className="text-sm font-medium text-muted-foreground">CPAD</p>
-           <p className="text-2xl font-bold">
-             {totals.deliveredOrders > 0 ? formatCurrency(globalCPAD, activeCountry.currency) : '-'}
+           <p className="text-sm font-medium text-muted-foreground">Margin</p>
+           <p className={`text-2xl font-bold ${globalMargin > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+             {globalMargin.toFixed(1)}%
            </p>
-         </Card>
-         <Card className="p-4">
-           <p className="text-sm font-medium text-muted-foreground">CPD</p>
-           <p className="text-2xl font-bold">
-             {totals.deliveredOrders > 0 ? formatCurrency(globalCPD, activeCountry.currency) : '-'}
-           </p>
-         </Card>
-         <Card className="p-4 bg-primary/5 border-primary/10">
-           <p className="text-sm font-medium text-muted-foreground">Total Profit</p>
-           <div className="flex items-baseline gap-2">
-             <p className={`text-2xl font-bold ${totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-               {formatCurrency(totals.profit, activeCountry.currency)}
-             </p>
-             <span className={`text-sm font-medium ${globalMargin > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-               ({globalMargin.toFixed(1)}%)
-             </span>
-           </div>
          </Card>
       </div>
 
-      <div id="analyse-table-container" className="border rounded-md bg-card overflow-hidden">
+      <div className="border rounded-md bg-card overflow-hidden">
         <DndContext 
           sensors={sensors} 
           collisionDetection={closestCenter} 
@@ -729,12 +494,13 @@ export default function Analyse() {
                       return <SortableHeader key={colId} id={colId} column={column} />;
                     })}
                   </SortableContext>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={currentColumnOrder.length} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={currentColumnOrder.length + 1} className="h-24 text-center text-muted-foreground">
                        No products assigned to this country (or no active products).
                     </TableCell>
                   </TableRow>
@@ -745,12 +511,37 @@ export default function Analyse() {
                       className={row.profit < 0 ? "bg-red-50 hover:bg-red-50/90" : ""}
                     >
                        {currentColumnOrder.map(colId => renderCell(row, colId))}
+                       <TableCell className="p-1 text-center whitespace-nowrap">
+                         <div className="flex items-center justify-center gap-1">
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             className="h-8 w-8 text-muted-foreground hover:text-primary"
+                             onClick={() => toast({ 
+                               title: "Saved", 
+                               description: "Analysis updated successfully.",
+                               duration: 2000,
+                             })}
+                           >
+                             <Save className="w-4 h-4" />
+                           </Button>
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             className="h-8 w-8 text-muted-foreground hover:text-primary"
+                             onClick={() => setViewProduct(row)}
+                           >
+                             <Eye className="w-4 h-4" />
+                           </Button>
+                         </div>
+                       </TableCell>
                     </TableRow>
                   ))
                 )}
                 {rows.length > 0 && (
                   <TableRow className="bg-muted/30 font-bold border-t-2">
                      {currentColumnOrder.map(colId => renderTotalCell(colId))}
+                     <TableCell></TableCell>
                   </TableRow>
                 )}
               </TableBody>
