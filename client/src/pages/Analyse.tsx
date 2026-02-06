@@ -680,35 +680,35 @@ export default function Analyse() {
         <Card className="bg-muted/30">
           <CardContent className="p-4">
              <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-               <div className="flex flex-col gap-2 p-3 bg-background rounded-md shadow-sm border min-w-[150px]">
+               <div className="flex flex-col gap-2">
                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Est. Orders</span>
                  <span className="text-2xl font-bold">{formatNumber(totalOrders)}</span>
                </div>
                
                <div className="h-10 w-px bg-border hidden md:block" />
                
-               <div className="flex flex-col gap-2 p-3 bg-background rounded-md shadow-sm border min-w-[150px]">
+               <div className="flex flex-col gap-2">
                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Delivered</span>
                  <span className="text-2xl font-bold">{formatNumber(totals.deliveredOrders)}</span>
                </div>
                
                <div className="h-10 w-px bg-border hidden md:block" />
                
-               <div className="flex flex-col gap-2 p-3 bg-background rounded-md shadow-sm border min-w-[150px]">
+               <div className="flex flex-col gap-2">
                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Revenue</span>
                  <span className="text-2xl font-bold">{formatCurrency(totals.revenue, activeCountry.currency)}</span>
                </div>
 
                <div className="h-10 w-px bg-border hidden md:block" />
 
-               <div className="flex flex-col gap-2 p-3 bg-background rounded-md shadow-sm border min-w-[150px]">
+               <div className="flex flex-col gap-2">
                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">CPA</span>
                  <span className="text-2xl font-bold text-blue-600">{formatCurrency(globalCPA, activeCountry.currency)}</span>
                </div>
 
                <div className="h-10 w-px bg-border hidden md:block" />
 
-               <div className="flex flex-col gap-2 p-3 bg-background rounded-md shadow-sm border min-w-[150px]">
+               <div className="flex flex-col gap-2">
                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Margin</span>
                  <span className={`text-2xl font-bold ${globalMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                    {globalMargin.toFixed(1)}%
