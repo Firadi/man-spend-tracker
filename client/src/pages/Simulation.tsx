@@ -6,16 +6,20 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import { RotateCcw, Calculator, DollarSign, TrendingUp, TrendingDown, Package, CheckCircle, Truck, Coins, Save, History, Trash2, ArrowUpRight } from "lucide-react";
+import { RotateCcw, Calculator, DollarSign, TrendingUp, TrendingDown, Package, CheckCircle, Truck, Coins, Save, History, Trash2, ArrowUpRight, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { toPng } from 'html-to-image';
+import jsPDF from 'jspdf';
+import { useRef } from 'react';
 
 export default function Simulation() {
   const { simulations, saveSimulation, deleteSimulation } = useStore();
   const { toast } = useToast();
+  const resultsRef = useRef<HTMLDivElement>(null);
   const [simulationName, setSimulationName] = useState("");
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -144,6 +148,25 @@ export default function Simulation() {
     e.stopPropagation();
     deleteSimulation(id);
     toast({ title: "Deleted", description: "Simulation removed from history." });
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!resultsRef.current) return;
+
+    try {
+      const dataUrl = await toPng(resultsRef.current, { cacheBust: true });
+      const pdf = new jsPDF();
+      const imgProps = pdf.getImageProperties(dataUrl);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`cod-simulation-${format(new Date(), 'yyyy-MM-dd-HH-mm')}.pdf`);
+      toast({ title: "PDF Downloaded", description: "Your simulation report is ready." });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Download Failed", description: "Could not generate PDF.", variant: "destructive" });
+    }
   };
 
   // Helper to display KES estimation
@@ -376,14 +399,19 @@ export default function Simulation() {
                   </Button>
                   
                   {results && (
-                    <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="flex-1 gap-2 hover:bg-blue-500/10 hover:text-blue-500 border-blue-200/20">
-                          <Save className="w-4 h-4" />
-                          Save Result
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
+                    <>
+                      <Button onClick={handleDownloadPDF} variant="outline" className="flex-none gap-2 hover:bg-blue-500/10 hover:text-blue-500 border-blue-200/20 px-3">
+                        <Download className="w-4 h-4" />
+                      </Button>
+                      
+                      <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" className="flex-1 gap-2 hover:bg-blue-500/10 hover:text-blue-500 border-blue-200/20">
+                            <Save className="w-4 h-4" />
+                            Save Result
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Save Simulation</DialogTitle>
                           <DialogDescription>
@@ -408,6 +436,7 @@ export default function Simulation() {
                         </div>
                       </DialogContent>
                     </Dialog>
+                    </>
                   )}
 
                   <Button onClick={reset} variant="outline" className="flex-none hover:bg-muted/50 border-muted-foreground/20">
@@ -419,7 +448,7 @@ export default function Simulation() {
         </div>
 
         {/* Right Column: Results */}
-        <div className="lg:col-span-7 h-full">
+        <div className="lg:col-span-7 h-full" ref={resultsRef}>
             <Card className="border-muted/30 shadow-lg bg-card/80 backdrop-blur-sm h-full">
               <CardHeader className="pb-4 border-b border-muted/20">
                 <CardTitle className="text-blue-500 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
