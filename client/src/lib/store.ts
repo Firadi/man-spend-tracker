@@ -51,6 +51,14 @@ export interface SelectedAdSet {
   campaignName: string;
 }
 
+export interface ProductAdsSpend {
+  productId: string;
+  spend: number;
+  source: 'manual' | 'facebook';
+  lastUpdated: string;
+  linkedAdSets: SelectedAdSet[];
+}
+
 // Map: CountryID -> ProductID -> Override
 export interface AnalysisState {
   [countryId: string]: {
@@ -69,6 +77,10 @@ interface AppState {
   fbAdsTable: FBAdRow[];
   tempSelectedAdSets: SelectedAdSet[];
   setTempSelectedAdSets: (selected: SelectedAdSet[]) => void;
+  
+  // Product Ads Spend
+  productAdsSpend: Record<string, ProductAdsSpend>;
+  updateProductAdsSpend: (productId: string, data: Partial<ProductAdsSpend>) => void;
 
   addCountry: (country: Omit<Country, 'id'>) => void;
   updateCountry: (id: string, data: Partial<Country>) => void;
@@ -106,6 +118,23 @@ export const useStore = create<AppState>()(
       fbAdsTable: [],
       tempSelectedAdSets: [],
       setTempSelectedAdSets: (selected) => set({ tempSelectedAdSets: selected }),
+
+      productAdsSpend: {},
+      updateProductAdsSpend: (productId, data) => set((state) => {
+        const current = state.productAdsSpend[productId] || {
+          productId,
+          spend: 0,
+          source: 'manual',
+          lastUpdated: new Date().toISOString(),
+          linkedAdSets: []
+        };
+        return {
+          productAdsSpend: {
+            ...state.productAdsSpend,
+            [productId]: { ...current, ...data }
+          }
+        };
+      }),
 
       columnOrder: [
         'product', 

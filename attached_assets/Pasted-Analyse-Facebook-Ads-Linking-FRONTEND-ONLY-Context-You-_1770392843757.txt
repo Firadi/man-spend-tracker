@@ -1,0 +1,199 @@
+Analyse ↔ Facebook Ads Linking (FRONTEND ONLY)
+📌 Context
+
+You are working on an existing React web app for e-commerce analytics.
+
+There are already:
+
+Analyse page (table with products, revenue, ads, service fees, profit, KPIs)
+
+Facebook Ads page (frontend only) with selectable Ad Sets
+
+Products stored in localStorage
+
+This task is FRONTEND ONLY.
+No backend, no Facebook API, no OAuth.
+
+🎯 Goal of This Step
+
+Link Analyse rows (products) with Facebook Ad Sets, while ensuring:
+
+✅ Ads spend is stored independently
+✅ Removing or changing Ad Sets does NOT delete spend history
+✅ UI is API-ready for future backend integration
+
+🧩 Core Concept (VERY IMPORTANT)
+Ads Spend is OWNED BY PRODUCT, NOT by Ad Set
+
+Ad Sets are only sources of spend, not the owner.
+
+Once spend is saved:
+
+It belongs to the product
+
+It must never disappear automatically
+
+🧱 Data Models (STRICT — DO NOT CHANGE)
+1️⃣ Product Ads Spend (Persistent)
+productAdsSpend = {
+  productId: "prod_1",
+  spend: 1200,
+  source: "manual" | "facebook",
+  lastUpdated: "2026-02-06",
+  linkedAdSets: [
+    {
+      adSetId: "adset_1",
+      adSetName: "Broad – Men",
+      campaignId: "cmp_1",
+      campaignName: "Winter Sales"
+    }
+  ]
+}
+
+Stored in localStorage.
+
+2️⃣ Ad Set Link (Reference Only)
+
+Ad Sets only reference products.
+They never own spend.
+
+🖥️ Analyse Page — UI Changes
+Add a Facebook Icon Column (END of table)
+
+For each product row, add:
+
+📘 Facebook icon (Link Ad Sets)
+
+Tooltip: “Link Facebook Ad Sets”
+
+🪟 Link Ad Sets Modal
+
+When clicking the Facebook icon:
+
+Modal Content
+
+1️⃣ Product info at top
+
+Product name
+
+SKU (if exists)
+
+2️⃣ Linked Ad Sets section
+
+List currently linked Ad Sets
+
+Each with ❌ remove button (removes link ONLY)
+
+3️⃣ Button: Select Ad Sets
+
+Opens Facebook Ads selection modal
+
+Uses selections from Facebook Ads page
+
+4️⃣ Ads Spend Input
+
+Number input
+
+Label: Ads Spend
+
+Editable manually
+
+Default:
+
+Existing saved spend
+
+OR 0
+
+5️⃣ Button: Save
+
+💾 Save Behavior (CRITICAL)
+
+On Save:
+
+Save spend to product
+
+Save linked Ad Sets as metadata only
+
+Spend must persist even if:
+
+Ad Set is removed
+
+Ad Set is deleted
+
+Facebook connection is lost
+
+❌ Never auto-reset spend
+❌ Never auto-sync spend yet
+
+📊 Analyse Table Logic
+Ads Column Behavior
+
+Ads value = productAdsSpend.spend
+
+Editable inline OR via modal
+
+Always reflects saved value
+
+🔄 Changing / Removing Ad Sets
+
+If user removes all Ad Sets:
+
+Show warning text:
+
+“Ad Sets removed — spend remains manual”
+
+Spend remains untouched.
+
+🌱 Default State
+
+If product has:
+
+No Ad Set
+
+No saved spend
+
+Then:
+
+Ads = 0
+
+Source = manual
+
+🎨 UX Rules
+
+Clear Facebook branding (blue icon)
+
+No blocking validation
+
+Fast interactions
+
+Spreadsheet feel
+
+🚫 DO NOT IMPLEMENT
+
+Automatic spend fetching
+
+Facebook API calls
+
+Backend logic
+
+Spend recalculation based on Ad Sets
+
+✅ Final Result
+
+After this step:
+
+Products can be linked to Facebook Ad Sets
+
+Ads spend is safely stored per product
+
+Analyse works 100% offline
+
+Backend can be plugged later without UI changes
+
+🧠 Developer Hint (IMPORTANT)
+
+Treat Ad Sets like tags
+Treat Ads Spend like financial truth
+
+
+
