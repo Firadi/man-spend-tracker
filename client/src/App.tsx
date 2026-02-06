@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -14,33 +14,12 @@ import AuthPage from "@/pages/AuthPage";
 import { useStore } from "@/lib/store";
 import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
-import { ProtectedRoute } from "@/lib/protected-route";
+import { Loader2 } from "lucide-react";
 
-function Router() {
-  return (
-    <Switch>
-      <Route path="/auth" component={AuthPage} />
-      <Route path="/:rest*">
-        {(params) => (
-          <Layout>
-            <Switch>
-              <ProtectedRoute path="/" component={Dashboard} />
-              <ProtectedRoute path="/analyse" component={Analyse} />
-              <ProtectedRoute path="/simulation" component={Simulation} />
-              <ProtectedRoute path="/products" component={Products} />
-              <ProtectedRoute path="/countries" component={Countries} />
-              <Route component={NotFound} />
-            </Switch>
-          </Layout>
-        )}
-      </Route>
-    </Switch>
-  );
-}
-
-function App() {
-  const { user } = useAuth();
+function AppContent() {
+  const { user, isLoading } = useAuth();
   const fetchData = useStore((state) => state.fetchData);
+  const [location] = useLocation();
 
   useEffect(() => {
     if (user) {
@@ -48,20 +27,53 @@ function App() {
     }
   }, [user, fetchData]);
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    if (location !== "/auth") {
+      return <Redirect to="/auth" />;
+    }
+    return <AuthPage />;
+  }
+
+  if (location === "/auth") {
+    return <Redirect to="/" />;
+  }
+
+  return (
+    <Layout>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/analyse" component={Analyse} />
+        <Route path="/simulation" component={Simulation} />
+        <Route path="/products" component={Products} />
+        <Route path="/countries" component={Countries} />
+        <Route component={NotFound} />
+      </Switch>
+    </Layout>
+  );
+}
+
+function App() {
   return (
     <TooltipProvider>
       <Toaster />
-      <Router />
+      <AppContent />
     </TooltipProvider>
   );
 }
 
 function AppWrapper() {
-  console.log("AppWrapper mounting");
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-         <App />
+        <App />
       </AuthProvider>
     </QueryClientProvider>
   );
