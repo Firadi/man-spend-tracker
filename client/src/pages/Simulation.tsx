@@ -151,18 +151,29 @@ export default function Simulation() {
   };
 
   const handleDownloadPDF = async () => {
-    if (!resultsRef.current) return;
+    // If we're capturing the whole page or a large area, we might want to target a specific wrapper
+    // that includes everything: Inputs, Results, and the Breakdown table.
+    // Currently ref is on the grid, which includes Inputs and Results.
+    // The breakdown table is OUTSIDE that grid.
+    
+    // Let's target the parent container. Since we can't easily move the ref to the top-level div 
+    // without refactoring the whole component return, let's just use document.getElementById 
+    // or wrap the content we want in a new div with an ID.
+    
+    const element = document.getElementById('simulation-content');
+    if (!element) return;
 
     try {
-      const dataUrl = await toPng(resultsRef.current, { cacheBust: true });
-      const pdf = new jsPDF();
+      // Temporarily expand height or handle scrolling if needed, but for now just capture
+      const dataUrl = await toPng(element, { cacheBust: true, backgroundColor: '#000000' }); // assuming dark mode or set appropriate bg
+      const pdf = new jsPDF('p', 'mm', 'a4');
       const imgProps = pdf.getImageProperties(dataUrl);
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
       pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`cod-simulation-${format(new Date(), 'yyyy-MM-dd-HH-mm')}.pdf`);
-      toast({ title: "PDF Downloaded", description: "Your simulation report is ready." });
+      toast({ title: "PDF Downloaded", description: "Your full report is ready." });
     } catch (err) {
       console.error(err);
       toast({ title: "Download Failed", description: "Could not generate PDF.", variant: "destructive" });
@@ -175,7 +186,7 @@ export default function Simulation() {
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-10">
+    <div className="space-y-8 max-w-7xl mx-auto pb-10" id="simulation-content">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -448,7 +459,7 @@ export default function Simulation() {
         </div>
 
         {/* Right Column: Results */}
-        <div className="lg:col-span-7 h-full" ref={resultsRef}>
+        <div className="lg:col-span-7 h-full">
             <Card className="border-muted/30 shadow-lg bg-card/80 backdrop-blur-sm h-full">
               <CardHeader className="pb-4 border-b border-muted/20">
                 <CardTitle className="text-blue-500 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
