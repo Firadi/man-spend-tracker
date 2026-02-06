@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useStore, Product } from "@/lib/store";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -45,6 +45,36 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+function DebouncedInput({ value: externalValue, onChange, ...props }: { value: string | number; onChange: (val: string) => void } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'>) {
+  const [localValue, setLocalValue] = useState(String(externalValue || ''));
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFocusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isFocusedRef.current) {
+      setLocalValue(String(externalValue || ''));
+    }
+  }, [externalValue]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLocalValue(val);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      onChange(val);
+    }, 600);
+  };
+
+  const handleFocus = () => { isFocusedRef.current = true; };
+  const handleBlur = () => {
+    isFocusedRef.current = false;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    onChange(localValue);
+  };
+
+  return <input {...props} value={localValue} onChange={handleChange} onFocus={handleFocus} onBlur={handleBlur} />;
+}
 
 interface Column {
   id: string;
@@ -541,11 +571,11 @@ export default function Analyse() {
         // Editable fields
         return (
           <TableCell key={columnId} className="p-0">
-            <Input 
+            <DebouncedInput 
               type="number" 
-              className="w-full h-10 text-right font-bold text-base bg-transparent border-none shadow-none focus-visible:ring-0 rounded-none px-2 text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="w-full h-10 text-right font-bold text-base bg-transparent border-none shadow-none focus-visible:ring-0 rounded-none px-2 text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none flex ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
               value={row[columnId] || ''}
-              onChange={(e) => handleUpdate(row.product.id, columnId as any, e.target.value)}
+              onChange={(val) => handleUpdate(row.product.id, columnId as any, val)}
               placeholder="0"
             />
           </TableCell>
