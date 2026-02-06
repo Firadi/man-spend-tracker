@@ -707,13 +707,12 @@ export default function Analyse() {
                       return <SortableHeader key={colId} id={colId} column={column} />;
                     })}
                   </SortableContext>
-                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={currentColumnOrder.length + 1} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={currentColumnOrder.length} className="h-24 text-center text-muted-foreground">
                        No products assigned to this country (or no active products).
                     </TableCell>
                   </TableRow>
@@ -724,37 +723,12 @@ export default function Analyse() {
                       className={row.profit < 0 ? "bg-red-50 hover:bg-red-50/90" : ""}
                     >
                        {currentColumnOrder.map(colId => renderCell(row, colId))}
-                       <TableCell className="p-1 text-center whitespace-nowrap">
-                         <div className="flex items-center justify-center gap-1">
-                           <Button 
-                             variant="ghost" 
-                             size="icon" 
-                             className="h-8 w-8 text-muted-foreground hover:text-primary"
-                             onClick={() => toast({ 
-                               title: "Saved", 
-                               description: "Analysis updated successfully.",
-                               duration: 2000,
-                             })}
-                           >
-                             <Save className="w-4 h-4" />
-                           </Button>
-                           <Button 
-                             variant="ghost" 
-                             size="icon" 
-                             className="h-8 w-8 text-muted-foreground hover:text-primary"
-                             onClick={() => setViewProduct(row)}
-                           >
-                             <Eye className="w-4 h-4" />
-                           </Button>
-                         </div>
-                       </TableCell>
                     </TableRow>
                   ))
                 )}
                 {rows.length > 0 && (
                   <TableRow className="bg-muted/30 font-bold border-t-2">
                      {currentColumnOrder.map(colId => renderTotalCell(colId))}
-                     <TableCell></TableCell>
                   </TableRow>
                 )}
               </TableBody>
