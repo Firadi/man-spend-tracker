@@ -51,6 +51,46 @@ const ALL_COLUMNS: Column[] = [
   { id: 'profit', label: 'Profit', align: 'right', width: 'w-[140px]' },
 ];
 
+function CircularProgress({ value, size = 40, strokeWidth = 3 }: { value: number, size?: number, strokeWidth?: number }) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const progress = Math.min(100, Math.max(0, value));
+  const offset = circumference - (progress / 100) * circumference;
+  
+  const isGood = value >= 50;
+  const colorClass = isGood ? "text-green-500" : "text-red-500";
+  const bgClass = isGood ? "text-green-100" : "text-red-100";
+
+  return (
+    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="transform -rotate-90">
+        <circle
+          className={bgClass}
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          r={radius}
+          cx={size / 2}
+          cy={size / 2}
+        />
+        <circle
+          className={colorClass}
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          r={radius}
+          cx={size / 2}
+          cy={size / 2}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+        />
+      </svg>
+      <span className="absolute text-[10px] font-medium">{Math.round(value)}%</span>
+    </div>
+  );
+}
+
 function SortableHeader({ id, column }: { id: string, column: Column }) {
   const {
     attributes,
@@ -256,8 +296,10 @@ export default function Analyse() {
         // @ts-ignore
         const rateValue = row[columnId];
         return (
-          <TableCell key={columnId} className="text-right font-mono">
-            {rateValue.toFixed(1)}%
+          <TableCell key={columnId} className="text-right p-1">
+            <div className="flex justify-end">
+              <CircularProgress value={rateValue} />
+            </div>
           </TableCell>
         );
       default:
@@ -289,11 +331,29 @@ export default function Analyse() {
            </TableCell>
          );
        case 'confirmationRate':
-         return <TableCell key={columnId} className="text-right font-mono">{globalConfirmationRate.toFixed(1)}%</TableCell>;
+         return (
+            <TableCell key={columnId} className="text-right font-mono">
+               <div className="flex justify-end">
+                 <CircularProgress value={globalConfirmationRate} />
+               </div>
+            </TableCell>
+         );
        case 'deliveryRate':
-         return <TableCell key={columnId} className="text-right font-mono">{globalDeliveryRate.toFixed(1)}%</TableCell>;
+         return (
+            <TableCell key={columnId} className="text-right font-mono">
+               <div className="flex justify-end">
+                 <CircularProgress value={globalDeliveryRate} />
+               </div>
+            </TableCell>
+         );
        case 'deliveryRatePerLead':
-         return <TableCell key={columnId} className="text-right font-mono">{globalDeliveryRatePerLead.toFixed(1)}%</TableCell>;
+         return (
+            <TableCell key={columnId} className="text-right font-mono">
+               <div className="flex justify-end">
+                 <CircularProgress value={globalDeliveryRatePerLead} />
+               </div>
+            </TableCell>
+         );
        default:
          // @ts-ignore
          const val = totals[columnId];
