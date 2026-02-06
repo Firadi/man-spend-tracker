@@ -1,14 +1,25 @@
 import { useState } from "react";
+import { useStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency, formatNumber } from "@/lib/utils";
-import { RotateCcw, Calculator, DollarSign, TrendingUp, TrendingDown, Package, CheckCircle, Truck, Coins } from "lucide-react";
+import { RotateCcw, Calculator, DollarSign, TrendingUp, TrendingDown, Package, CheckCircle, Truck, Coins, Save, History, Trash2, ArrowUpRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Simulation() {
+  const { simulations, saveSimulation, deleteSimulation } = useStore();
+  const { toast } = useToast();
+  const [simulationName, setSimulationName] = useState("");
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
   const [inputs, setInputs] = useState({
     totalOrders: 180,
     confirmationRate: 70,
@@ -101,6 +112,40 @@ export default function Simulation() {
     setResults(null);
   };
 
+  const handleSave = () => {
+    if (!results) return;
+    if (!simulationName.trim()) {
+      toast({ title: "Name required", description: "Please enter a name for your simulation.", variant: "destructive" });
+      return;
+    }
+
+    saveSimulation({
+      name: simulationName,
+      inputs,
+      results
+    });
+
+    setSimulationName("");
+    setIsSaveDialogOpen(false);
+    toast({ title: "Simulation Saved", description: "Your simulation has been saved to history." });
+  };
+
+  const loadSimulation = (sim: any) => {
+    setInputs(sim.inputs);
+    // Recalculate results based on loaded inputs to ensure consistency
+    // Alternatively, we could just set results directly from history if we trust it
+    // But since `calculate` depends on `inputs` state, we might need to manually trigger it or set results state
+    setResults(sim.results); 
+    setIsHistoryOpen(false);
+    toast({ title: "Simulation Loaded", description: `Loaded "${sim.name}"` });
+  };
+
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteSimulation(id);
+    toast({ title: "Deleted", description: "Simulation removed from history." });
+  };
+
   // Helper to display KES estimation
   const formatKES = (usdAmount: number) => {
     return `≈ ${(usdAmount * 130).toLocaleString()} KES`;
@@ -116,10 +161,75 @@ export default function Simulation() {
             Analyze profitability with real-time currency conversion (1 USD = 130 KES).
           </p>
         </div>
-        <Badge variant="outline" className="text-sm px-4 py-1.5 h-auto bg-blue-500/10 border-blue-500/30 text-blue-500 gap-2 backdrop-blur-sm">
-          <Coins className="w-4 h-4" />
-          <span>Currency: USD ($)</span>
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2 border-blue-500/20 hover:bg-blue-500/10">
+                <History className="w-4 h-4 text-blue-500" />
+                History
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+              <DialogHeader>
+                <DialogTitle>Simulation History</DialogTitle>
+                <DialogDescription>View and load your previously saved calculations.</DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="flex-1 pr-4">
+                <div className="space-y-4 py-4">
+                  {simulations?.length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground">
+                      <History className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                      <p>No saved simulations yet.</p>
+                    </div>
+                  ) : (
+                    simulations?.map((sim) => (
+                      <div 
+                        key={sim.id} 
+                        className="group flex items-center justify-between p-4 rounded-xl border border-muted/40 bg-card hover:border-blue-500/30 hover:bg-muted/30 transition-all cursor-pointer"
+                        onClick={() => loadSimulation(sim)}
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold text-foreground group-hover:text-blue-500 transition-colors">{sim.name}</h4>
+                            <Badge variant="secondary" className="text-[10px] font-mono">
+                              {format(new Date(sim.date), 'MMM d, HH:mm')}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Package className="w-3 h-3" /> {sim.inputs.totalOrders} Orders
+                            </span>
+                            <span className={`flex items-center gap-1 font-medium ${sim.results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              <DollarSign className="w-3 h-3" /> Profit: {formatCurrency(sim.results.totalProfit, 'USD')}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button size="sm" variant="ghost" className="gap-1 text-xs">
+                            Load <ArrowUpRight className="w-3 h-3" />
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                            onClick={(e) => handleDelete(sim.id, e)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </DialogContent>
+          </Dialog>
+
+          <Badge variant="outline" className="text-sm px-4 py-1.5 h-auto bg-blue-500/10 border-blue-500/30 text-blue-500 gap-2 backdrop-blur-sm">
+            <Coins className="w-4 h-4" />
+            <span>Currency: USD ($)</span>
+          </Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -264,8 +374,43 @@ export default function Simulation() {
                   <Button onClick={calculate} className="bg-blue-600 hover:bg-blue-700 text-white font-bold flex-1 shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.02]">
                     Calculate Profit
                   </Button>
-                  <Button onClick={reset} variant="outline" className="flex-1 hover:bg-muted/50 border-muted-foreground/20">
-                    Reset
+                  
+                  {results && (
+                    <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="secondary" className="flex-none gap-2 hover:bg-blue-500/10 hover:text-blue-500 border border-transparent hover:border-blue-500/20">
+                          <Save className="w-4 h-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Save Simulation</DialogTitle>
+                          <DialogDescription>
+                            Give this simulation a name to find it easily later.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid gap-2">
+                            <Label htmlFor="name">Name</Label>
+                            <Input
+                              id="name"
+                              value={simulationName}
+                              onChange={(e) => setSimulationName(e.target.value)}
+                              placeholder="e.g. Q1 T-Shirt Campaign"
+                              onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" onClick={() => setIsSaveDialogOpen(false)}>Cancel</Button>
+                          <Button onClick={handleSave}>Save</Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+
+                  <Button onClick={reset} variant="outline" className="flex-none hover:bg-muted/50 border-muted-foreground/20">
+                    <RotateCcw className="w-4 h-4" />
                   </Button>
                 </div>
               </CardContent>

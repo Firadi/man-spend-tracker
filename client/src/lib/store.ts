@@ -41,11 +41,36 @@ export interface AnalysisState {
   };
 }
 
+export interface SimulationData {
+  id: string;
+  name: string;
+  date: string;
+  inputs: {
+    totalOrders: number;
+    confirmationRate: number;
+    deliveryRate: number;
+    sellingPrice: number;
+    productCost: number;
+    serviceFee: number;
+    adsCost: number;
+    otherCost: number;
+  };
+  results: {
+    confirmedOrders: number;
+    deliveredOrders: number;
+    totalRevenue: number;
+    totalCosts: number;
+    totalProfit: number;
+    profitPerDelivered: number;
+  };
+}
+
 interface AppState {
   countries: Country[];
   products: Product[];
   analysis: AnalysisState;
-  
+  simulations: SimulationData[];
+
   addCountry: (country: Omit<Country, 'id'>) => void;
   updateCountry: (id: string, data: Partial<Country>) => void;
   deleteCountry: (id: string) => void;
@@ -58,9 +83,14 @@ interface AppState {
 
   updateAnalysis: (countryId: string, productId: string, data: AnalysisOverride) => void;
   
+  // Simulations
+  saveSimulation: (simulation: Omit<SimulationData, 'id' | 'date'>) => void;
+  deleteSimulation: (id: string) => void;
+
   // Column reordering
   columnOrder: string[];
   setColumnOrder: (order: string[]) => void;
+
 
   // Sidebar state
   sidebarCollapsed: boolean;
@@ -75,6 +105,7 @@ export const useStore = create<AppState>()(
       countries: [],
       products: [],
       analysis: {},
+      simulations: [],
       columnOrder: [
         'product', 
         'totalOrders', 
@@ -90,6 +121,21 @@ export const useStore = create<AppState>()(
         'profit'
       ],
       sidebarCollapsed: false,
+
+      saveSimulation: (simulation) => set((state) => ({
+        simulations: [
+          { 
+            ...simulation, 
+            id: uuidv4(), 
+            date: new Date().toISOString() 
+          },
+          ...(state.simulations || [])
+        ]
+      })),
+
+      deleteSimulation: (id) => set((state) => ({
+        simulations: state.simulations.filter((s) => s.id !== id)
+      })),
 
       setColumnOrder: (order) => set({ columnOrder: order }),
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
