@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
 import Analyse from "@/pages/Analyse";
+import FacebookAds from "@/pages/FacebookAds";
 import Products from "@/pages/Products";
 import Countries from "@/pages/Countries";
 import { useStore } from "@/lib/store";
@@ -18,6 +19,7 @@ function Router() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/analyse" component={Analyse} />
+        <Route path="/facebook-ads" component={FacebookAds} />
         <Route path="/products" component={Products} />
         <Route path="/countries" component={Countries} />
         <Route component={NotFound} />
