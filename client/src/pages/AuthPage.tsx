@@ -46,8 +46,8 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen grid lg:grid-cols-2">
-      <div className="flex flex-col gap-4 p-6 md:p-10">
+    <div className="min-h-screen w-full flex flex-col lg:grid lg:grid-cols-2">
+      <div className="flex flex-col gap-4 p-6 md:p-10 justify-center">
         <div className="flex justify-center gap-2 md:justify-start">
           <a href="#" className="flex items-center gap-2 font-medium">
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -57,22 +57,21 @@ export default function AuthPage() {
           </a>
         </div>
         <div className="flex flex-1 items-center justify-center">
-          <div className="w-full max-w-xs">
-            <Tabs defaultValue="login" className="w-full">
+          <div className="w-full max-w-xs space-y-6">
+             <div className="text-center">
+                <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
+                <p className="text-sm text-muted-foreground">Login to your account</p>
+             </div>
+
+             <Tabs defaultValue="login" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
               
               <TabsContent value="login">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Login</CardTitle>
-                    <CardDescription>
-                      Enter your credentials to access your account
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                <Card className="border-0 shadow-none">
+                  <CardContent className="p-0 space-y-4">
                     <Form {...loginForm}>
                       <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
                         <FormField
@@ -82,7 +81,7 @@ export default function AuthPage() {
                             <FormItem>
                               <FormLabel>Username</FormLabel>
                               <FormControl>
-                                <Input {...field} />
+                                <Input placeholder="admin" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -95,7 +94,7 @@ export default function AuthPage() {
                             <FormItem>
                               <FormLabel>Password</FormLabel>
                               <FormControl>
-                                <Input type="password" {...field} />
+                                <Input type="password" placeholder="admin" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -112,14 +111,8 @@ export default function AuthPage() {
               </TabsContent>
 
               <TabsContent value="register">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Create Account</CardTitle>
-                    <CardDescription>
-                      Sign up for a new KPI Manager account
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                <Card className="border-0 shadow-none">
+                  <CardContent className="p-0 space-y-4">
                     <Form {...registerForm}>
                       <form onSubmit={registerForm.handleSubmit((data) => registerMutation.mutate(data))} className="space-y-4">
                         <FormField
@@ -129,7 +122,7 @@ export default function AuthPage() {
                             <FormItem>
                               <FormLabel>Username</FormLabel>
                               <FormControl>
-                                <Input {...field} />
+                                <Input placeholder="Choose a username" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -142,7 +135,7 @@ export default function AuthPage() {
                             <FormItem>
                               <FormLabel>Password</FormLabel>
                               <FormControl>
-                                <Input type="password" {...field} />
+                                <Input type="password" placeholder="Choose a password" {...field} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -161,7 +154,7 @@ export default function AuthPage() {
           </div>
         </div>
       </div>
-      <div className="hidden bg-muted lg:block relative">
+      <div className="hidden bg-muted lg:block relative h-full">
          <div className="absolute inset-0 bg-zinc-900" />
          <div className="absolute inset-0 flex items-center justify-center text-white p-10">
             <div className="max-w-md space-y-4 text-center">
