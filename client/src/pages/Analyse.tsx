@@ -79,7 +79,7 @@ function SortableHeader({ id, column }: { id: string, column: Column }) {
 }
 
 export default function Analyse() {
-  const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder } = useStore();
+  const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder, updateCountry } = useStore();
   const [selectedCountryId, setSelectedCountryId] = useState<string>(countries[0]?.id || "");
   const [showDrafts, setShowDrafts] = useState(false);
 
@@ -104,13 +104,19 @@ export default function Analyse() {
   const activeCountryId = selectedCountryId || countries[0]?.id;
   const activeCountry = countries.find(c => c.id === activeCountryId);
 
+  const handleCountryUpdate = (field: 'defaultShipping' | 'defaultCod' | 'defaultReturn', value: string) => {
+    if (!activeCountry) return;
+    const numValue = parseFloat(value) || 0;
+    updateCountry(activeCountry.id, { [field]: numValue });
+  };
+
   const filteredProducts = products.filter(p => {
     const statusMatch = showDrafts || p.status === 'Active';
     const countryMatch = activeCountryId && p.countryIds && p.countryIds.includes(activeCountryId);
     return statusMatch && countryMatch;
   });
 
-  const getAnalysisValue = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'deliveredOrders') => {
+  const getAnalysisValue = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'deliveredOrders'): number => {
     if (!activeCountryId) return 0;
     const override = analysis[activeCountryId]?.[productId]?.[field];
     if (override !== undefined) return override;
@@ -256,6 +262,53 @@ export default function Analyse() {
           </Select>
         </div>
       </div>
+
+      {activeCountry && (
+        <Card className="bg-muted/30">
+          <CardContent className="p-4">
+             <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
+                <div className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                   Default Fees ({activeCountry.currency}):
+                </div>
+                <div className="flex flex-wrap gap-4 w-full">
+                   <div className="flex items-center gap-2">
+                      <Label htmlFor="shipping" className="text-xs">Shipping</Label>
+                      <Input 
+                        id="shipping"
+                        type="number" 
+                        className="w-20 h-8" 
+                        value={activeCountry.defaultShipping}
+                        onChange={(e) => handleCountryUpdate('defaultShipping', e.target.value)}
+                      />
+                   </div>
+                   <div className="flex items-center gap-2">
+                      <Label htmlFor="cod" className="text-xs">COD</Label>
+                      <Input 
+                        id="cod"
+                        type="number" 
+                        className="w-20 h-8" 
+                        value={activeCountry.defaultCod}
+                        onChange={(e) => handleCountryUpdate('defaultCod', e.target.value)}
+                      />
+                   </div>
+                   <div className="flex items-center gap-2">
+                      <Label htmlFor="return" className="text-xs">Return</Label>
+                      <Input 
+                        id="return"
+                        type="number" 
+                        className="w-20 h-8" 
+                        value={activeCountry.defaultReturn}
+                        onChange={(e) => handleCountryUpdate('defaultReturn', e.target.value)}
+                      />
+                   </div>
+                   <div className="flex items-center gap-2 ml-auto text-xs text-muted-foreground border-l pl-4">
+                      <span>Total per Order: {formatCurrency(activeCountry.defaultShipping + activeCountry.defaultCod + activeCountry.defaultReturn, activeCountry.currency)}</span>
+                   </div>
+                </div>
+             </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
          <Card className="p-4 bg-primary/5 border-primary/10">
