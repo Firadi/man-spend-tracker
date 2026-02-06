@@ -490,7 +490,14 @@ export default function Analyse() {
             <div className="font-medium flex items-center gap-2">
               {row.product.name}
               {activeCountry && (
-                <span className="text-[10px] font-normal text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border">
+                <span className="text-[10px] font-normal text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded border flex items-center gap-1">
+                  {activeCountry.code && (
+                    <img 
+                      src={`https://flagcdn.com/w20/${activeCountry.code.toLowerCase()}.png`} 
+                      className="h-2 w-auto rounded-[1px]" 
+                      alt="" 
+                    />
+                  )}
                   {activeCountry.name}
                 </span>
               )}
@@ -636,12 +643,23 @@ export default function Analyse() {
             </div>
             
             <Select value={activeCountryId} onValueChange={setSelectedCountryId}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[220px]">
                 <SelectValue placeholder="Select Country" />
               </SelectTrigger>
               <SelectContent>
                 {countries.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name} ({c.currency})</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>
+                    <div className="flex items-center gap-2">
+                      {c.code && (
+                        <img 
+                          src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`} 
+                          alt={c.code}
+                          className="h-3 w-auto rounded-sm object-cover border"
+                        />
+                      )}
+                      <span>{c.name} ({c.currency})</span>
+                    </div>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -709,6 +727,15 @@ export default function Analyse() {
                    Default Fees ({activeCountry.currency}):
                 </div>
                 <div className="flex flex-wrap gap-4 w-full">
+                   {activeCountry.code && (
+                     <div className="flex items-center gap-2 mr-2">
+                        <img 
+                          src={`https://flagcdn.com/w40/${activeCountry.code.toLowerCase()}.png`} 
+                          alt={activeCountry.name}
+                          className="h-8 w-auto rounded shadow-sm border"
+                        />
+                     </div>
+                   )}
                    <div className="flex items-center gap-2">
                       <Label htmlFor="shipping" className="text-xs">Shipping</Label>
                       <Input 

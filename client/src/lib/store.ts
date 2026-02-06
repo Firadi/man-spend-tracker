@@ -8,6 +8,7 @@ export interface Country {
   id: string;
   name: string;
   currency: string;
+  code: string;
   defaultShipping: number;
   defaultCod: number;
   defaultReturn: number;
@@ -199,9 +200,9 @@ export const useStore = create<AppState>()(
           const deId = 'de';
           set({
             countries: [
-              { id: usId, name: 'United States', currency: 'USD', defaultShipping: 5, defaultCod: 0, defaultReturn: 2 },
-              { id: ukId, name: 'United Kingdom', currency: 'GBP', defaultShipping: 4, defaultCod: 0, defaultReturn: 1.5 },
-              { id: deId, name: 'Germany', currency: 'EUR', defaultShipping: 4.5, defaultCod: 2, defaultReturn: 0 },
+              { id: usId, name: 'United States', currency: 'USD', code: 'US', defaultShipping: 5, defaultCod: 0, defaultReturn: 2 },
+              { id: ukId, name: 'United Kingdom', currency: 'GBP', code: 'GB', defaultShipping: 4, defaultCod: 0, defaultReturn: 1.5 },
+              { id: deId, name: 'Germany', currency: 'EUR', code: 'DE', defaultShipping: 4.5, defaultCod: 2, defaultReturn: 0 },
             ],
             products: [
               { id: '1', sku: 'TSHIRT-BLK-M', name: 'Classic Black T-Shirt (M)', status: 'Active', cost: 5, price: 25, countryIds: [usId, ukId] },

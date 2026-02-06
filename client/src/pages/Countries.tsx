@@ -26,6 +26,7 @@ import {
 const countrySchema = z.object({
   name: z.string().min(1, "Name is required"),
   currency: z.string().min(1, "Currency is required").default("USD"),
+  code: z.string().min(2, "Code is required").max(2, "Use 2-letter ISO code").default("US"),
   defaultShipping: z.coerce.number().min(0).default(0),
   defaultCod: z.coerce.number().min(0).default(0),
   defaultReturn: z.coerce.number().min(0).default(0),
@@ -44,6 +45,7 @@ export default function Countries() {
     defaultValues: {
       name: "",
       currency: "USD",
+      code: "US",
       defaultShipping: 0,
       defaultCod: 0,
       defaultReturn: 0,
@@ -68,6 +70,7 @@ export default function Countries() {
     form.reset({
       name: country.name,
       currency: country.currency,
+      code: country.code || "US",
       defaultShipping: country.defaultShipping,
       defaultCod: country.defaultCod,
       defaultReturn: country.defaultReturn,
@@ -103,6 +106,7 @@ export default function Countries() {
             form.reset({
               name: "",
               currency: "USD",
+              code: "US",
               defaultShipping: 0,
               defaultCod: 0,
               defaultReturn: 0,
@@ -133,19 +137,34 @@ export default function Countries() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="currency"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Currency Code</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. USD" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Currency Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. USD" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Country Code (ISO)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. US" {...field} maxLength={2} className="uppercase" onChange={e => field.onChange(e.target.value.toUpperCase())} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
                 <div className="grid grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
@@ -200,9 +219,19 @@ export default function Countries() {
         {countries.map((country) => (
           <Card key={country.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-lg font-medium">
-                {country.name}
-              </CardTitle>
+              <div className="flex items-center gap-3">
+                 {country.code && (
+                   <img 
+                     src={`https://flagcdn.com/w40/${country.code.toLowerCase()}.png`} 
+                     srcSet={`https://flagcdn.com/w80/${country.code.toLowerCase()}.png 2x`}
+                     alt={country.name}
+                     className="h-6 w-auto rounded shadow-sm object-cover border"
+                   />
+                 )}
+                 <CardTitle className="text-lg font-medium">
+                   {country.name}
+                 </CardTitle>
+              </div>
               <Globe className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
