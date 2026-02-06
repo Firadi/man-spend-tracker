@@ -1,0 +1,173 @@
+
+Add a new page called Simulation (COD Simulator) to the existing app.
+This page means to simulate profitability before launching a product, using COD logic.
+
+🧭 1. Page Basics
+
+Page name: Simulation
+
+Route: /simulation
+
+Visible in main sidebar / navbar
+
+Dark UI (same design system as Analyse page)
+
+Currency default: USD
+
+Hint text: 1 USD = 130 KES (static, not API)
+
+🧩 2. Page Layout (2 Columns)
+LEFT COLUMN → INPUTS
+
+Each input is editable:
+
+Total Orders
+
+number input
+
+example: 180
+
+Confirmation Rate (%)
+
+number input
+
+example: 70
+
+logic:
+
+confirmed = total_orders × confirmation_rate / 100
+
+Delivery Rate (%)
+
+number input
+
+example: 40
+
+logic:
+
+delivered = confirmed × delivery_rate / 100
+
+Selling Price per Delivered Order (USD)
+
+example: 46
+
+show small hint under input:
+
+≈ price × 130 KES
+
+Product Cost per Delivered Order (USD)
+
+example: 20
+
+show KES hint
+
+Service Fee per Delivered Order (USD)
+
+default value: 5.7
+
+editable
+
+Ads Cost (Total) (USD)
+
+example: 310
+
+Other Cost (Total) (USD)
+
+default: 0
+
+Buttons:
+
+Calculate
+
+Reset
+
+🧮 3. RIGHT COLUMN → RESULTS (Read-only)
+
+These values update ONLY after clicking Calculate
+
+Confirmed Orders
+
+total_orders × confirmation_rate
+
+Delivered Orders
+
+confirmed × delivery_rate
+
+Total Revenue (USD)
+
+delivered × selling_price
+
+Total Costs (USD)
+
+(product_cost × delivered)
+
+(service_fee × delivered)
+
+ads_cost
+
+other_cost
+
+
+
+
+Total Profit (USD)
+
+revenue − total_costs
+
+Profit per Delivered Order
+
+total_profit ÷ delivered
+UI Rules:
+
+If Total Profit > 0 → value turns GREEN
+
+If ≤ 0 → RED
+
+Big bold profit number (main focus)
+
+📊 4. CPD & CPA Breakdown Table (Footer Section)
+
+Title:
+CPD & CPA Breakdown
+
+Table with columns:
+| Metric | Formula | Value |
+
+Rows:
+
+CPD (Cost per Delivered – without ads)
+
+CPD = product_cost + service_fee
+
+CPA (Ads per Order)
+
+CPA = ads_cost ÷ total_orders
+
+CPA (Delivered)
+
+CPA_delivered = ads_cost ÷ delivered
+
+Total Delivery Cost per Delivered
+
+TDC = CPD + CPA_delivered
+Extras:
+
+Show USD value big
+
+Show ≈ KES below in small text
+
+Values update on Calculate only
+
+🎨 5. UI / UX Rules
+
+Same card style as Analyse
+
+Rounded cards
+
+Soft glow
+
+Clear spacing
+
+No charts (table + numbers only)
+
+Responsive (desktop first)
