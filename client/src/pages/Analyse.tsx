@@ -7,9 +7,20 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AlertCircle, GripHorizontal, Save, Eye } from "lucide-react";
+import { AlertCircle, GripHorizontal, Save, Eye, Download, FileSpreadsheet, FileImage, FileType } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import * as XLSX from 'xlsx';
+import * as htmlToImage from 'html-to-image';
+import { jsPDF } from 'jspdf';
 import {
   Dialog,
   DialogContent,
@@ -138,6 +149,110 @@ export default function Analyse() {
   const [showDrafts, setShowDrafts] = useState(false);
   const [viewProduct, setViewProduct] = useState<any | null>(null);
   const { toast } = useToast();
+
+  const handleExportExcel = () => {
+    if (!activeCountry) return;
+
+    // Prepare data
+    const exportData = rows.map(row => ({
+      Product: row.product.name,
+      SKU: row.product.sku,
+      'Total Orders': row.totalOrders,
+      'Orders Confirmed': row.ordersConfirmed,
+      'Conf. Rate (%)': `${row.confirmationRate.toFixed(1)}%`,
+      'Delivered Orders': row.deliveredOrders,
+      'Del. Rate (%)': `${row.deliveryRate.toFixed(1)}%`,
+      'Del. Rate/Lead (%)': `${row.deliveryRatePerLead.toFixed(1)}%`,
+      'Revenue': row.revenue,
+      'Ads': row.ads,
+      'Service Fees': row.serviceFees,
+      'Product Fees': row.productFees,
+      'Profit': row.profit
+    }));
+
+    // Add totals row
+    exportData.push({
+      Product: 'TOTALS',
+      SKU: '',
+      'Total Orders': totals.totalOrders,
+      'Orders Confirmed': totals.ordersConfirmed,
+      'Conf. Rate (%)': `${globalConfirmationRate.toFixed(1)}%`,
+      'Delivered Orders': totals.deliveredOrders,
+      'Del. Rate (%)': `${globalDeliveryRate.toFixed(1)}%`,
+      'Del. Rate/Lead (%)': `${globalDeliveryRatePerLead.toFixed(1)}%`,
+      'Revenue': totals.revenue,
+      'Ads': totals.ads,
+      'Service Fees': totals.serviceFees,
+      'Product Fees': totals.productFees,
+      'Profit': totals.profit
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Analysis");
+    
+    // Auto-width columns roughly
+    const wscols = [
+      { wch: 30 }, // Product
+      { wch: 15 }, // SKU
+      { wch: 12 }, // Total Orders
+      { wch: 15 }, // Orders Confirmed
+      { wch: 15 }, // Conf Rate
+      { wch: 15 }, // Delivered
+      { wch: 15 }, // Del Rate
+      { wch: 15 }, // Del Rate/Lead
+      { wch: 12 }, // Revenue
+      { wch: 12 }, // Ads
+      { wch: 12 }, // Service Fees
+      { wch: 12 }, // Prod Fees
+      { wch: 12 }, // Profit
+    ];
+    worksheet['!cols'] = wscols;
+
+    XLSX.writeFile(workbook, `analysis_${activeCountry.name}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    toast({ title: "Exported to Excel", description: "File downloaded successfully." });
+  };
+
+  const handleExportPDF = async () => {
+    const node = document.getElementById('analyse-table-container');
+    if (!node) return;
+
+    try {
+      const dataUrl = await htmlToImage.toPng(node, { backgroundColor: '#ffffff' });
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [node.scrollWidth + 40, node.scrollHeight + 40] // Custom size to fit table
+      });
+      
+      pdf.addImage(dataUrl, 'PNG', 20, 20, node.scrollWidth, node.scrollHeight);
+      pdf.save(`analysis_snapshot_${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      toast({ title: "Exported to PDF", description: "Snapshot downloaded successfully." });
+    } catch (error) {
+      console.error('PDF export failed', error);
+      toast({ title: "Export Failed", description: "Could not generate PDF snapshot.", variant: "destructive" });
+    }
+  };
+
+  const handleExportSVG = async () => {
+    const node = document.getElementById('analyse-table-container');
+    if (!node) return;
+
+    try {
+      const dataUrl = await htmlToImage.toSvg(node, { backgroundColor: '#ffffff' });
+      const link = document.createElement('a');
+      link.download = `analysis_snapshot_${new Date().toISOString().split('T')[0]}.svg`;
+      link.href = dataUrl;
+      link.click();
+      
+      toast({ title: "Exported to SVG", description: "Snapshot downloaded successfully." });
+    } catch (error) {
+      console.error('SVG export failed', error);
+      toast({ title: "Export Failed", description: "Could not generate SVG snapshot.", variant: "destructive" });
+    }
+  };
 
   // Fix for persisted legacy column order:
   // If the persisted columnOrder is missing any of the current ALL_COLUMNS (newly added ones),
@@ -402,6 +517,31 @@ export default function Analyse() {
               ))}
             </SelectContent>
           </Select>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 gap-1">
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleExportExcel}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                <span>Excel (.xlsx)</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF}>
+                <FileImage className="mr-2 h-4 w-4" />
+                <span>PDF Snapshot</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportSVG}>
+                <FileType className="mr-2 h-4 w-4" />
+                <span>SVG Snapshot</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -477,7 +617,7 @@ export default function Analyse() {
          </Card>
       </div>
 
-      <div className="border rounded-md bg-card overflow-hidden">
+      <div id="analyse-table-container" className="border rounded-md bg-card overflow-hidden">
         <DndContext 
           sensors={sensors} 
           collisionDetection={closestCenter} 
