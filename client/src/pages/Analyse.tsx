@@ -67,6 +67,7 @@ const ALL_COLUMNS: Column[] = [
   { id: 'serviceFees', label: 'Service Fees', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'productFees', label: 'Prod. Fees', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'profit', label: 'Profit', align: 'right', width: 'w-[140px]' },
+  { id: 'margin', label: 'Margin', align: 'right', width: 'w-[100px]' },
 ];
 
 function CircularProgress({ value, size = 40, strokeWidth = 3 }: { value: number, size?: number, strokeWidth?: number }) {
@@ -169,7 +170,8 @@ export default function Analyse() {
       'Ads': row.ads,
       'Service Fees': row.serviceFees,
       'Product Fees': row.productFees,
-      'Profit': row.profit
+      'Profit': row.profit,
+      'Margin': `${row.margin.toFixed(1)}%`
     }));
 
     // Add totals row
@@ -186,7 +188,8 @@ export default function Analyse() {
       'Ads': totals.ads,
       'Service Fees': totals.serviceFees,
       'Product Fees': totals.productFees,
-      'Profit': totals.profit
+      'Profit': totals.profit,
+      'Margin': `${globalMargin.toFixed(1)}%`
     });
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -208,6 +211,7 @@ export default function Analyse() {
       { wch: 12 }, // Service Fees
       { wch: 12 }, // Prod Fees
       { wch: 12 }, // Profit
+      { wch: 12 }, // Margin
     ];
     worksheet['!cols'] = wscols;
 
@@ -341,6 +345,7 @@ export default function Analyse() {
     const deliveryRatePerLead = totalOrders > 0 ? (deliveredOrders / totalOrders) * 100 : 0;
 
     const profit = revenue - ads - serviceFees - productFees;
+    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
     
     return {
       id: p.id,
@@ -355,7 +360,8 @@ export default function Analyse() {
       confirmationRate,
       deliveryRate,
       deliveryRatePerLead,
-      profit
+      profit,
+      margin
     };
   });
 
@@ -431,6 +437,14 @@ export default function Analyse() {
              </span>
           </TableCell>
         );
+      case 'margin':
+        return (
+          <TableCell key={columnId} className="text-right font-mono font-medium">
+             <span className={row.margin > 0 ? 'text-green-600' : row.margin < 0 ? 'text-red-600' : 'text-muted-foreground'}>
+               {row.margin.toFixed(1)}%
+             </span>
+          </TableCell>
+        );
       case 'confirmationRate':
       case 'deliveryRate':
       case 'deliveryRatePerLead':
@@ -468,6 +482,14 @@ export default function Analyse() {
            <TableCell key={columnId} className="text-right font-mono">
              <span className={totals.profit > 0 ? 'text-green-600' : totals.profit < 0 ? 'text-red-600' : ''}>
                {formatCurrency(totals.profit, activeCountry?.currency || 'USD')}
+             </span>
+           </TableCell>
+         );
+       case 'margin':
+         return (
+           <TableCell key={columnId} className="text-right font-mono font-bold">
+             <span className={globalMargin > 0 ? 'text-green-600' : globalMargin < 0 ? 'text-red-600' : ''}>
+               {globalMargin.toFixed(1)}%
              </span>
            </TableCell>
          );
