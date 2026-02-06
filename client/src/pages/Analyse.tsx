@@ -394,10 +394,10 @@ export default function Analyse() {
   const globalDeliveryRate = totals.ordersConfirmed > 0 ? (totals.deliveredOrders / totals.ordersConfirmed) * 100 : 0;
   const globalDeliveryRatePerLead = totals.totalOrders > 0 ? (totals.deliveredOrders / totals.totalOrders) * 100 : 0;
 
-  // CPA Calculation: ADS / DELIVERED ORDER
-  const globalCPA = totals.deliveredOrders > 0 ? totals.ads / totals.deliveredOrders : 0;
-  // CPAD: Same as CPA (Ads / Delivered Orders)
-  const globalCPAD = globalCPA;
+  // CPA Calculation: ADS / TOTAL ORDER (as requested)
+  const globalCPA = totals.totalOrders > 0 ? totals.ads / totals.totalOrders : 0;
+  // CPAD: Ads / Delivered Orders
+  const globalCPAD = totals.deliveredOrders > 0 ? totals.ads / totals.deliveredOrders : 0;
   // CPD: Total Costs (Ads + Service Fees + Product Fees) / Delivered Orders
   const globalCPD = totals.deliveredOrders > 0 ? (totals.ads + totals.serviceFees + totals.productFees) / totals.deliveredOrders : 0;
   
@@ -700,7 +700,7 @@ export default function Analyse() {
          <Card className="p-4">
            <p className="text-sm font-medium text-muted-foreground">CPA</p>
            <p className="text-2xl font-bold">
-             {totals.deliveredOrders > 0 ? formatCurrency(globalCPA, activeCountry.currency) : '-'}
+             {totals.totalOrders > 0 ? formatCurrency(globalCPA, activeCountry.currency) : '-'}
            </p>
          </Card>
          <Card className="p-4">
@@ -808,11 +808,11 @@ export default function Analyse() {
                     </CardHeader>
                     <CardContent className="p-4 pt-0">
                        <div className="text-2xl font-bold">
-                         {viewProduct.deliveredOrders > 0 
-                           ? formatCurrency(viewProduct.ads / viewProduct.deliveredOrders, activeCountry?.currency || 'USD')
+                         {viewProduct.totalOrders > 0 
+                           ? formatCurrency(viewProduct.ads / viewProduct.totalOrders, activeCountry?.currency || 'USD')
                            : '-'}
                        </div>
-                       <p className="text-xs text-muted-foreground">Ads / Delivered Orders</p>
+                       <p className="text-xs text-muted-foreground">Ads / Total Orders</p>
                     </CardContent>
                  </Card>
                  <Card className="bg-muted/30">
