@@ -68,6 +68,7 @@ const ALL_COLUMNS: Column[] = [
   { id: 'productFees', label: 'Prod. Fees', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'profit', label: 'Profit', align: 'right', width: 'w-[140px]' },
   { id: 'margin', label: 'Margin', align: 'right', width: 'w-[100px]' },
+  { id: 'actions', label: '', align: 'right', width: 'w-[80px]' },
 ];
 
 function CircularProgress({ value, size = 40, strokeWidth = 3 }: { value: number, size?: number, strokeWidth?: number }) {
@@ -445,6 +446,19 @@ export default function Analyse() {
              </span>
           </TableCell>
         );
+      case 'actions':
+        return (
+          <TableCell key={columnId} className="text-right p-1">
+             <div className="flex items-center justify-end gap-1">
+               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewProduct(row)}>
+                 <Eye className="h-4 w-4 text-muted-foreground" />
+               </Button>
+               <Button variant="ghost" size="icon" className="h-8 w-8">
+                 <Save className="h-4 w-4 text-muted-foreground" />
+               </Button>
+             </div>
+          </TableCell>
+        );
       case 'confirmationRate':
       case 'deliveryRate':
       case 'deliveryRatePerLead':
@@ -493,6 +507,8 @@ export default function Analyse() {
              </span>
            </TableCell>
          );
+       case 'actions':
+          return <TableCell key={columnId}></TableCell>;
        case 'confirmationRate':
          return (
             <TableCell key={columnId} className="text-right font-mono">
