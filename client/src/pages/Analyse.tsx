@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useStore, Product, SelectedAdSet } from "@/lib/store";
+import { useStore, Product } from "@/lib/store";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AlertCircle, GripHorizontal, Save, Eye, Download, FileSpreadsheet, FileImage, FileType, Search, Filter, Facebook, X, Plus } from "lucide-react";
+import { AlertCircle, GripHorizontal, Save, Eye, Download, FileSpreadsheet, FileImage, FileType, Search, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,8 +27,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   DndContext,
@@ -69,7 +67,6 @@ const ALL_COLUMNS: Column[] = [
   { id: 'serviceFees', label: 'Service Fees', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'productFees', label: 'Prod. Fees', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'profit', label: 'Profit', align: 'right', width: 'w-[140px]' },
-  { id: 'facebookLink', label: 'FB Link', align: 'center', width: 'w-[80px]' },
 ];
 
 function CircularProgress({ value, size = 40, strokeWidth = 3 }: { value: number, size?: number, strokeWidth?: number }) {
@@ -137,43 +134,22 @@ function SortableHeader({ id, column }: { id: string, column: Column }) {
       {...attributes} 
       {...listeners}
     >
-      <div className={`flex items-center gap-2 ${column.align === 'center' ? 'justify-center' : 'justify-end'} ${column.align === 'left' ? 'justify-start' : ''}`}>
+      <div className="flex items-center gap-2 justify-end">
          {column.align === 'left' && <span>{column.label}</span>}
-         {column.align !== 'left' && column.align !== 'center' && <GripHorizontal className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground/60" />}
+         <GripHorizontal className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground/60" />
          {column.align !== 'left' && <span>{column.label}</span>}
-         {column.align === 'center' && <GripHorizontal className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground/60 ml-2" />}
       </div>
     </TableHead>
   );
 }
 
 export default function Analyse() {
-  const { 
-    countries, 
-    products, 
-    analysis, 
-    updateAnalysis, 
-    columnOrder, 
-    setColumnOrder, 
-    updateCountry,
-    productAdsSpend,
-    updateProductAdsSpend,
-    tempSelectedAdSets,
-    setTempSelectedAdSets
-  } = useStore();
-  
+  const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder, updateCountry } = useStore();
   const [selectedCountryId, setSelectedCountryId] = useState<string>(countries[0]?.id || "");
   const [showDrafts, setShowDrafts] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [profitFilter, setProfitFilter] = useState<'all' | 'profitable' | 'loss'>('all');
   const [viewProduct, setViewProduct] = useState<any | null>(null);
-  
-  // Facebook Link Modal State
-  const [fbLinkModalOpen, setFbLinkModalOpen] = useState(false);
-  const [activeLinkingProduct, setActiveLinkingProduct] = useState<Product | null>(null);
-  const [stagedLinkedAdSets, setStagedLinkedAdSets] = useState<SelectedAdSet[]>([]);
-  const [stagedAdsSpend, setStagedAdsSpend] = useState<number>(0);
-
   const { toast } = useToast();
 
   const handleExportExcel = () => {
@@ -281,6 +257,8 @@ export default function Analyse() {
   };
 
   // Fix for persisted legacy column order:
+  // If the persisted columnOrder is missing any of the current ALL_COLUMNS (newly added ones),
+  // reset it to the default order to ensure users see the new columns in the correct logical order.
   useEffect(() => {
     const defaultIds = ALL_COLUMNS.map(c => c.id);
     const currentIds = columnOrder || [];
@@ -291,6 +269,7 @@ export default function Analyse() {
     }
   }, [columnOrder, setColumnOrder]);
 
+  // Initialize column order if empty (legacy support)
   const currentColumnOrder = columnOrder && columnOrder.length > 0 ? columnOrder : ALL_COLUMNS.map(c => c.id);
 
   const sensors = useSensors(
@@ -307,6 +286,7 @@ export default function Analyse() {
     }
   };
 
+  // Fallback to first country if selected is invalid
   const activeCountryId = selectedCountryId || countries[0]?.id;
   const activeCountry = countries.find(c => c.id === activeCountryId);
 
@@ -324,20 +304,13 @@ export default function Analyse() {
 
   const getAnalysisValue = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'deliveredOrders' | 'totalOrders' | 'ordersConfirmed'): number => {
     if (!activeCountryId) return 0;
-    
-    // Ads special handling: Use productAdsSpend store primarily
-    if (field === 'ads') {
-      const spendData = productAdsSpend[productId];
-      return spendData ? spendData.spend : 0;
-    }
-
     const override = analysis[activeCountryId]?.[productId]?.[field];
     if (override !== undefined) return override;
     
     // Defaults
     if (field === 'serviceFees' && activeCountry) {
       const delivered = getAnalysisValue(productId, 'deliveredOrders');
-      const feePerOrder = (activeCountry.defaultShipping || 0) + (activeCountry.defaultCod || 0) + (activeCountry.defaultReturn || 0);
+      const feePerOrder = activeCountry.defaultShipping + activeCountry.defaultCod + activeCountry.defaultReturn;
       return delivered * feePerOrder;
     }
     return 0;
@@ -346,67 +319,7 @@ export default function Analyse() {
   const handleUpdate = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'deliveredOrders' | 'totalOrders' | 'ordersConfirmed', value: string) => {
     if (!activeCountryId) return;
     const numValue = parseFloat(value) || 0;
-    
-    // Ads special update: update productAdsSpend store
-    if (field === 'ads') {
-      updateProductAdsSpend(productId, { 
-        spend: numValue, 
-        lastUpdated: new Date().toISOString(),
-        source: 'manual' 
-      });
-      return;
-    }
-
     updateAnalysis(activeCountryId, productId, { [field]: numValue });
-  };
-
-  // FB Link Handler
-  const openFbLinkModal = (product: Product) => {
-    const currentData = productAdsSpend[product.id] || { 
-      productId: product.id, 
-      spend: 0, 
-      source: 'manual', 
-      linkedAdSets: [],
-      lastUpdated: new Date().toISOString()
-    };
-    
-    setActiveLinkingProduct(product);
-    setStagedLinkedAdSets([...currentData.linkedAdSets]);
-    setStagedAdsSpend(currentData.spend);
-    setFbLinkModalOpen(true);
-  };
-
-  const handleRemoveStagedAdSet = (adSetId: string) => {
-    setStagedLinkedAdSets(prev => prev.filter(as => as.adSetId !== adSetId));
-  };
-
-  const handleImportTempSelection = () => {
-    const existingIds = new Set(stagedLinkedAdSets.map(as => as.adSetId));
-    const newAdSets = tempSelectedAdSets.filter(as => !existingIds.has(as.adSetId));
-    
-    setStagedLinkedAdSets(prev => [...prev, ...newAdSets]);
-    
-    toast({
-      title: "Ad Sets Imported",
-      description: `Added ${newAdSets.length} Ad Sets from selection.`,
-    });
-  };
-
-  const handleSaveFbLink = () => {
-    if (!activeLinkingProduct) return;
-
-    updateProductAdsSpend(activeLinkingProduct.id, {
-      spend: stagedAdsSpend,
-      linkedAdSets: stagedLinkedAdSets,
-      source: stagedLinkedAdSets.length > 0 ? 'facebook' : 'manual',
-      lastUpdated: new Date().toISOString()
-    });
-
-    setFbLinkModalOpen(false);
-    toast({
-      title: "Linked Successfully",
-      description: "Ad sets and spend data updated.",
-    });
   };
 
   // Calculations
@@ -417,11 +330,14 @@ export default function Analyse() {
     const productFees = getAnalysisValue(p.id, 'productFees');
     const deliveredOrders = getAnalysisValue(p.id, 'deliveredOrders');
     
+    // New Fields
     const totalOrders = getAnalysisValue(p.id, 'totalOrders');
     const ordersConfirmed = getAnalysisValue(p.id, 'ordersConfirmed');
 
+    // Calculated Fields
     const confirmationRate = totalOrders > 0 ? (ordersConfirmed / totalOrders) * 100 : 0;
     const deliveryRate = ordersConfirmed > 0 ? (deliveredOrders / ordersConfirmed) * 100 : 0;
+    // Assuming Delivery Rate per Lead is Delivered / Total Orders
     const deliveryRatePerLead = totalOrders > 0 ? (deliveredOrders / totalOrders) * 100 : 0;
 
     const profit = revenue - ads - serviceFees - productFees;
@@ -456,23 +372,38 @@ export default function Analyse() {
   });
 
   const totals = rows.reduce((acc, row) => ({
-    revenue: acc.revenue + (Number(row.revenue) || 0),
-    ads: acc.ads + (Number(row.ads) || 0),
-    serviceFees: acc.serviceFees + (Number(row.serviceFees) || 0),
-    productFees: acc.productFees + (Number(row.productFees) || 0),
-    deliveredOrders: acc.deliveredOrders + (Number(row.deliveredOrders) || 0),
-    totalOrders: acc.totalOrders + (Number(row.totalOrders) || 0),
-    ordersConfirmed: acc.ordersConfirmed + (Number(row.ordersConfirmed) || 0),
-    profit: acc.profit + (Number(row.profit) || 0),
+    revenue: acc.revenue + row.revenue,
+    ads: acc.ads + row.ads,
+    serviceFees: acc.serviceFees + row.serviceFees,
+    productFees: acc.productFees + row.productFees,
+    deliveredOrders: acc.deliveredOrders + row.deliveredOrders,
+    totalOrders: acc.totalOrders + row.totalOrders,
+    ordersConfirmed: acc.ordersConfirmed + row.ordersConfirmed,
+    profit: acc.profit + row.profit,
   }), { revenue: 0, ads: 0, serviceFees: 0, productFees: 0, deliveredOrders: 0, totalOrders: 0, ordersConfirmed: 0, profit: 0 });
 
+  // Calculate Global Rates
   const globalConfirmationRate = totals.totalOrders > 0 ? (totals.ordersConfirmed / totals.totalOrders) * 100 : 0;
   const globalDeliveryRate = totals.ordersConfirmed > 0 ? (totals.deliveredOrders / totals.ordersConfirmed) * 100 : 0;
   const globalDeliveryRatePerLead = totals.totalOrders > 0 ? (totals.deliveredOrders / totals.totalOrders) * 100 : 0;
 
+  // CPA Calculation: ADS / DELIVERED ORDER
   const globalCPA = totals.deliveredOrders > 0 ? totals.ads / totals.deliveredOrders : 0;
+  // CPAD: Same as CPA (Ads / Delivered Orders)
   const globalCPAD = globalCPA;
+  // CPD: Total Costs (Ads + Service Fees + Product Fees) / Delivered Orders
   const globalCPD = totals.deliveredOrders > 0 ? (totals.ads + totals.serviceFees + totals.productFees) / totals.deliveredOrders : 0;
+  
+  // Also updating the "Est. Orders" card to just show Delivered Orders for clarity, 
+  // or should it remain "Est. Orders" (calculated)?
+  // User asked for "CPA=ADS/DELIVERD ORDER". 
+  // I will keep totalOrders logic for "Est. Orders" card as it might be useful for users who haven't entered delivered orders yet,
+  // but I'll make sure CPA uses strictly delivered orders.
+  
+  // Previous calculation for totalOrders (kept for the Card display if needed, or we can switch to delivered only)
+  // Given the request is specific to CPA, I will leave totalOrders as is for the "Est. Orders" card 
+  // unless "Est. Orders" is also expected to be strictly delivered orders now.
+  // The user didn't explicitly ask to change "Est. Orders", just CPA.
   
   const totalOrders = rows.reduce((acc, row) => {
     if (row.deliveredOrders > 0) return acc + row.deliveredOrders;
@@ -482,6 +413,7 @@ export default function Analyse() {
 
   const globalMargin = totals.revenue > 0 ? (totals.profit / totals.revenue) * 100 : 0;
 
+  // Render Cell Helper
   const renderCell = (row: any, columnId: string) => {
     switch (columnId) {
       case 'product':
@@ -511,22 +443,8 @@ export default function Analyse() {
             </div>
           </TableCell>
         );
-      case 'facebookLink':
-        const hasLinks = productAdsSpend[row.product.id]?.linkedAdSets?.length > 0;
-        return (
-          <TableCell key={columnId} className="p-1 text-center">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="h-8 w-8 hover:bg-blue-50"
-              onClick={() => openFbLinkModal(row.product)}
-              title="Link Facebook Ad Sets"
-            >
-              <Facebook className={`w-4 h-4 ${hasLinks ? 'text-blue-600 fill-blue-100' : 'text-muted-foreground'}`} />
-            </Button>
-          </TableCell>
-        );
       default:
+        // Editable fields
         return (
           <TableCell key={columnId} className="p-1">
             <Input 
@@ -577,8 +495,6 @@ export default function Analyse() {
                </div>
             </TableCell>
          );
-       case 'facebookLink':
-         return <TableCell key={columnId}></TableCell>;
        default:
          // @ts-ignore
          const val = totals[columnId];
@@ -660,18 +576,18 @@ export default function Analyse() {
             />
           </div>
           
-          <div className="flex items-center gap-2 text-sm text-muted-foreground ml-auto">
-            <Filter className="w-4 h-4" />
-            <Select value={profitFilter} onValueChange={(val: any) => setProfitFilter(val)}>
-              <SelectTrigger className="w-[140px] h-9">
-                <SelectValue placeholder="Profit Filter" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Products</SelectItem>
-                <SelectItem value="profitable">Profitable Only</SelectItem>
-                <SelectItem value="loss">Loss Only</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+             <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
+             <Select value={profitFilter} onValueChange={(val: any) => setProfitFilter(val)}>
+               <SelectTrigger className="w-[180px]">
+                 <SelectValue placeholder="Profitability" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Profitability</SelectItem>
+                 <SelectItem value="profitable">Profitable Only</SelectItem>
+                 <SelectItem value="loss">Loss Only</SelectItem>
+               </SelectContent>
+             </Select>
           </div>
         </div>
       </div>
@@ -680,227 +596,293 @@ export default function Analyse() {
         <Card className="bg-muted/30">
           <CardContent className="p-4">
              <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-               <div className="flex flex-col gap-2 p-3 bg-background rounded-md shadow-sm border min-w-[150px]">
-                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Est. Orders</span>
-                 <span className="text-2xl font-bold">{formatNumber(totalOrders)}</span>
-               </div>
-               
-               <div className="h-10 w-px bg-border hidden md:block" />
-               
-               <div className="flex flex-col gap-2 p-3 bg-background rounded-md shadow-sm border min-w-[150px]">
-                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Delivered</span>
-                 <span className="text-2xl font-bold">{formatNumber(totals.deliveredOrders)}</span>
-               </div>
-               
-               <div className="h-10 w-px bg-border hidden md:block" />
-               
-               <div className="flex flex-col gap-2 p-3 bg-background rounded-md shadow-sm border min-w-[150px]">
-                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Revenue</span>
-                 <span className="text-2xl font-bold">{formatCurrency(totals.revenue, activeCountry.currency)}</span>
-               </div>
-
-               <div className="h-10 w-px bg-border hidden md:block" />
-
-               <div className="flex flex-col gap-2 p-3 bg-background rounded-md shadow-sm border min-w-[150px]">
-                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">CPA</span>
-                 <span className="text-2xl font-bold text-blue-600">{formatCurrency(globalCPA, activeCountry.currency)}</span>
-               </div>
-
-               <div className="h-10 w-px bg-border hidden md:block" />
-
-               <div className="flex flex-col gap-2 p-3 bg-background rounded-md shadow-sm border min-w-[150px]">
-                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Margin</span>
-                 <span className={`text-2xl font-bold ${globalMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                   {globalMargin.toFixed(1)}%
-                 </span>
-               </div>
-             </div>
-
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6 pt-4 border-t">
-               <div className="space-y-3">
-                 <h4 className="text-sm font-medium text-muted-foreground">Default Shipping Fee</h4>
-                 <div className="flex items-center gap-2">
-                   <span className="text-muted-foreground w-6">{activeCountry.currency}</span>
-                   <Input 
-                     type="number" 
-                     className="max-w-[100px]" 
-                     value={activeCountry.defaultShipping}
-                     onChange={(e) => handleCountryUpdate('defaultShipping', e.target.value)}
-                   />
-                 </div>
-               </div>
-               
-               <div className="space-y-3">
-                 <h4 className="text-sm font-medium text-muted-foreground">Default COD Fee</h4>
-                 <div className="flex items-center gap-2">
-                   <span className="text-muted-foreground w-6">{activeCountry.currency}</span>
-                   <Input 
-                     type="number" 
-                     className="max-w-[100px]" 
-                     value={activeCountry.defaultCod}
-                     onChange={(e) => handleCountryUpdate('defaultCod', e.target.value)}
-                   />
-                 </div>
-               </div>
-
-               <div className="space-y-3">
-                 <h4 className="text-sm font-medium text-muted-foreground">Default Return Fee</h4>
-                 <div className="flex items-center gap-2">
-                   <span className="text-muted-foreground w-6">{activeCountry.currency}</span>
-                   <Input 
-                     type="number" 
-                     className="max-w-[100px]" 
-                     value={activeCountry.defaultReturn}
-                     onChange={(e) => handleCountryUpdate('defaultReturn', e.target.value)}
-                   />
-                 </div>
-               </div>
+                <div className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                   Default Fees ({activeCountry.currency}):
+                </div>
+                <div className="flex flex-wrap gap-4 w-full">
+                   <div className="flex items-center gap-2">
+                      <Label htmlFor="shipping" className="text-xs">Shipping</Label>
+                      <Input 
+                        id="shipping"
+                        type="number" 
+                        className="w-20 h-8" 
+                        value={activeCountry.defaultShipping}
+                        onChange={(e) => handleCountryUpdate('defaultShipping', e.target.value)}
+                      />
+                   </div>
+                   <div className="flex items-center gap-2">
+                      <Label htmlFor="cod" className="text-xs">COD</Label>
+                      <Input 
+                        id="cod"
+                        type="number" 
+                        className="w-20 h-8" 
+                        value={activeCountry.defaultCod}
+                        onChange={(e) => handleCountryUpdate('defaultCod', e.target.value)}
+                      />
+                   </div>
+                   <div className="flex items-center gap-2">
+                      <Label htmlFor="return" className="text-xs">Return</Label>
+                      <Input 
+                        id="return"
+                        type="number" 
+                        className="w-20 h-8" 
+                        value={activeCountry.defaultReturn}
+                        onChange={(e) => handleCountryUpdate('defaultReturn', e.target.value)}
+                      />
+                   </div>
+                   <div className="flex items-center gap-2 ml-auto text-xs text-muted-foreground border-l pl-4">
+                      <span>Total per Order: {formatCurrency(activeCountry.defaultShipping + activeCountry.defaultCod + activeCountry.defaultReturn, activeCountry.currency)}</span>
+                   </div>
+                </div>
              </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Main Analysis Table */}
-      <div className="rounded-md border bg-card relative" id="analyse-table-container">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+         {/* Row 1 */}
+         <Card className="p-4">
+           <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+           <p className="text-2xl font-bold">{formatCurrency(totals.revenue, activeCountry.currency)}</p>
+         </Card>
+         <Card className="p-4">
+           <p className="text-sm font-medium text-muted-foreground">Total Service Fees</p>
+           <p className="text-2xl font-bold">{formatCurrency(totals.serviceFees, activeCountry.currency)}</p>
+         </Card>
+         <Card className="p-4">
+           <p className="text-sm font-medium text-muted-foreground">Total Ads</p>
+           <p className="text-2xl font-bold">{formatCurrency(totals.ads, activeCountry.currency)}</p>
+         </Card>
+         <Card className="p-4">
+           <p className="text-sm font-medium text-muted-foreground">Total Product Fees</p>
+           <p className="text-2xl font-bold">{formatCurrency(totals.productFees, activeCountry.currency)}</p>
+         </Card>
+
+         {/* Row 2 */}
+         <Card className="p-4">
+           <p className="text-sm font-medium text-muted-foreground">CPA</p>
+           <p className="text-2xl font-bold">
+             {totals.deliveredOrders > 0 ? formatCurrency(globalCPA, activeCountry.currency) : '-'}
+           </p>
+         </Card>
+         <Card className="p-4">
+           <p className="text-sm font-medium text-muted-foreground">CPAD</p>
+           <p className="text-2xl font-bold">
+             {totals.deliveredOrders > 0 ? formatCurrency(globalCPAD, activeCountry.currency) : '-'}
+           </p>
+         </Card>
+         <Card className="p-4">
+           <p className="text-sm font-medium text-muted-foreground">CPD</p>
+           <p className="text-2xl font-bold">
+             {totals.deliveredOrders > 0 ? formatCurrency(globalCPD, activeCountry.currency) : '-'}
+           </p>
+         </Card>
+         <Card className="p-4 bg-primary/5 border-primary/10">
+           <p className="text-sm font-medium text-muted-foreground">Total Profit</p>
+           <div className="flex items-baseline gap-2">
+             <p className={`text-2xl font-bold ${totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+               {formatCurrency(totals.profit, activeCountry.currency)}
+             </p>
+             <span className={`text-sm font-medium ${globalMargin > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+               ({globalMargin.toFixed(1)}%)
+             </span>
+           </div>
+         </Card>
+      </div>
+
+      <div id="analyse-table-container" className="border rounded-md bg-card overflow-hidden">
         <DndContext 
-          sensors={sensors}
-          collisionDetection={closestCenter}
+          sensors={sensors} 
+          collisionDetection={closestCenter} 
           onDragEnd={handleDragEnd}
         >
-          <Table>
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <SortableContext 
-                  items={currentColumnOrder} 
-                  strategy={horizontalListSortingStrategy}
-                >
-                  {currentColumnOrder.map((columnId) => {
-                    const column = ALL_COLUMNS.find(c => c.id === columnId);
-                    if (!column) return null;
-                    return <SortableHeader key={columnId} id={columnId} column={column} />;
-                  })}
-                </SortableContext>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={currentColumnOrder.length} className="h-24 text-center">
-                    No products found.
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <SortableContext items={currentColumnOrder} strategy={horizontalListSortingStrategy}>
+                    {currentColumnOrder.map(colId => {
+                      const column = ALL_COLUMNS.find(c => c.id === colId);
+                      if (!column) return null;
+                      return <SortableHeader key={colId} id={colId} column={column} />;
+                    })}
+                  </SortableContext>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
-              ) : (
-                rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {currentColumnOrder.map((columnId) => renderCell(row, columnId))}
+              </TableHeader>
+              <TableBody>
+                {rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={currentColumnOrder.length + 1} className="h-24 text-center text-muted-foreground">
+                       No products assigned to this country (or no active products).
+                    </TableCell>
                   </TableRow>
-                ))
-              )}
-              {/* Totals Row */}
-              {rows.length > 0 && (
-                <TableRow className="bg-muted/50 font-medium border-t-2">
-                  {currentColumnOrder.map((columnId) => renderTotalCell(columnId))}
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  rows.map((row) => (
+                    <TableRow 
+                      key={row.product.id}
+                      className={row.profit < 0 ? "bg-red-50 hover:bg-red-50/90" : ""}
+                    >
+                       {currentColumnOrder.map(colId => renderCell(row, colId))}
+                       <TableCell className="p-1 text-center whitespace-nowrap">
+                         <div className="flex items-center justify-center gap-1">
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             className="h-8 w-8 text-muted-foreground hover:text-primary"
+                             onClick={() => toast({ 
+                               title: "Saved", 
+                               description: "Analysis updated successfully.",
+                               duration: 2000,
+                             })}
+                           >
+                             <Save className="w-4 h-4" />
+                           </Button>
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             className="h-8 w-8 text-muted-foreground hover:text-primary"
+                             onClick={() => setViewProduct(row)}
+                           >
+                             <Eye className="w-4 h-4" />
+                           </Button>
+                         </div>
+                       </TableCell>
+                    </TableRow>
+                  ))
+                )}
+                {rows.length > 0 && (
+                  <TableRow className="bg-muted/30 font-bold border-t-2">
+                     {currentColumnOrder.map(colId => renderTotalCell(colId))}
+                     <TableCell></TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </DndContext>
       </div>
 
-      {/* Facebook Link Modal */}
-      <Dialog open={fbLinkModalOpen} onOpenChange={setFbLinkModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+      <Dialog open={!!viewProduct} onOpenChange={(open) => !open && setViewProduct(null)}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Link Facebook Ad Sets</DialogTitle>
+            <DialogTitle>Product Analysis Details</DialogTitle>
             <DialogDescription>
-              Connect ad sets to calculate Ads Spend for this product.
+              Detailed breakdown for {viewProduct?.product.name}
             </DialogDescription>
           </DialogHeader>
-
-          {activeLinkingProduct && (
-            <div className="space-y-4 py-4">
-              {/* Product Info */}
-              <div className="p-3 bg-muted rounded-md flex items-center justify-between">
+          
+          {viewProduct && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="font-medium text-sm">{activeLinkingProduct.name}</p>
-                  <p className="text-xs text-muted-foreground">{activeLinkingProduct.sku}</p>
+                  <Label className="text-muted-foreground">Product</Label>
+                  <div className="font-medium">{viewProduct.product.name}</div>
                 </div>
-                <div className="text-xs px-2 py-1 bg-background border rounded">
-                  {activeLinkingProduct.status}
+                <div>
+                  <Label className="text-muted-foreground">SKU</Label>
+                  <div className="font-mono">{viewProduct.product.sku}</div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Country</Label>
+                  <div>{activeCountry?.name} ({activeCountry?.currency})</div>
                 </div>
               </div>
 
-              {/* Linked Ad Sets List */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold uppercase text-muted-foreground">Linked Ad Sets</Label>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50" onClick={handleImportTempSelection}>
-                    <Plus className="w-3 h-3 mr-1" />
-                    Import Selection
-                  </Button>
-                </div>
-                
-                <div className="border rounded-md min-h-[100px] max-h-[150px] overflow-y-auto p-2 bg-slate-50 space-y-2">
-                  {stagedLinkedAdSets.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm">
-                      <p>No ad sets linked.</p>
-                      {tempSelectedAdSets.length > 0 && (
-                        <p className="text-xs mt-1 text-blue-600 cursor-pointer hover:underline" onClick={handleImportTempSelection}>
-                          Import {tempSelectedAdSets.length} selected from FB Ads page
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    stagedLinkedAdSets.map((adSet) => (
-                      <div key={adSet.adSetId} className="flex items-center justify-between bg-white p-2 rounded border text-sm shadow-sm">
-                        <div className="flex flex-col overflow-hidden mr-2">
-                           <span className="font-medium truncate">{adSet.adSetName}</span>
-                           <span className="text-[10px] text-muted-foreground truncate">{adSet.campaignName}</span>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 text-muted-foreground hover:text-red-500 hover:bg-red-50"
-                          onClick={() => handleRemoveStagedAdSet(adSet.adSetId)}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </div>
-                {stagedLinkedAdSets.length === 0 && (
-                  <p className="text-xs text-amber-600 flex items-center">
-                    <AlertCircle className="w-3 h-3 mr-1" />
-                    Ad Sets removed — spend remains manual
-                  </p>
-                )}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                 <Card className="bg-muted/30">
+                    <CardHeader className="p-4 pb-2">
+                       <CardTitle className="text-sm font-medium text-muted-foreground">CPA</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                       <div className="text-2xl font-bold">
+                         {viewProduct.deliveredOrders > 0 
+                           ? formatCurrency(viewProduct.ads / viewProduct.deliveredOrders, activeCountry?.currency || 'USD')
+                           : '-'}
+                       </div>
+                       <p className="text-xs text-muted-foreground">Ads / Delivered Orders</p>
+                    </CardContent>
+                 </Card>
+                 <Card className="bg-muted/30">
+                    <CardHeader className="p-4 pb-2">
+                       <CardTitle className="text-sm font-medium text-muted-foreground">CPAD</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                       <div className="text-2xl font-bold">
+                         {viewProduct.deliveredOrders > 0 
+                           ? formatCurrency(viewProduct.ads / viewProduct.deliveredOrders, activeCountry?.currency || 'USD')
+                           : '-'}
+                       </div>
+                       <p className="text-xs text-muted-foreground">Ads / Delivered Orders</p>
+                    </CardContent>
+                 </Card>
+                 <Card className="bg-muted/30">
+                    <CardHeader className="p-4 pb-2">
+                       <CardTitle className="text-sm font-medium text-muted-foreground">CPD</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                       <div className="text-2xl font-bold">
+                         {viewProduct.deliveredOrders > 0 
+                           ? formatCurrency((viewProduct.ads + viewProduct.serviceFees + viewProduct.productFees) / viewProduct.deliveredOrders, activeCountry?.currency || 'USD')
+                           : '-'}
+                       </div>
+                       <p className="text-xs text-muted-foreground">Total Costs / Delivered</p>
+                    </CardContent>
+                 </Card>
+                 <Card className="bg-muted/30">
+                    <CardHeader className="p-4 pb-2">
+                       <CardTitle className="text-sm font-medium text-muted-foreground">Profit</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                       <div className={`text-2xl font-bold ${viewProduct.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                         {formatCurrency(viewProduct.profit, activeCountry?.currency || 'USD')}
+                       </div>
+                    </CardContent>
+                 </Card>
               </div>
 
-              {/* Ads Spend Input */}
-              <div className="space-y-2 pt-2">
-                <Label htmlFor="ads-spend-input">Ads Spend ({activeCountry?.currency || 'USD'})</Label>
-                <div className="relative">
-                  <Input 
-                    id="ads-spend-input"
-                    type="number" 
-                    value={stagedAdsSpend} 
-                    onChange={(e) => setStagedAdsSpend(parseFloat(e.target.value) || 0)}
-                    className="pl-8 font-mono"
-                  />
-                  <span className="absolute left-3 top-2.5 text-muted-foreground text-sm">$</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Update this value manually. It will persist for the product.
-                </p>
+              <div className="border rounded-md overflow-hidden">
+                <Table>
+                   <TableBody>
+                     <TableRow>
+                        <TableCell className="font-medium">Total Orders</TableCell>
+                        <TableCell className="text-right">{formatNumber(viewProduct.totalOrders)}</TableCell>
+                     </TableRow>
+                     <TableRow>
+                        <TableCell className="font-medium">Orders Confirmed</TableCell>
+                        <TableCell className="text-right">{formatNumber(viewProduct.ordersConfirmed)}</TableCell>
+                     </TableRow>
+                     <TableRow>
+                        <TableCell className="font-medium">Delivered Orders</TableCell>
+                        <TableCell className="text-right">{formatNumber(viewProduct.deliveredOrders)}</TableCell>
+                     </TableRow>
+                     <TableRow className="border-t-2">
+                        <TableCell className="font-medium">Revenue</TableCell>
+                        <TableCell className="text-right">{formatCurrency(viewProduct.revenue, activeCountry?.currency || 'USD')}</TableCell>
+                     </TableRow>
+                     <TableRow>
+                        <TableCell className="font-medium text-muted-foreground pl-6">- Ads</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{formatCurrency(viewProduct.ads, activeCountry?.currency || 'USD')}</TableCell>
+                     </TableRow>
+                     <TableRow>
+                        <TableCell className="font-medium text-muted-foreground pl-6">- Service Fees</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{formatCurrency(viewProduct.serviceFees, activeCountry?.currency || 'USD')}</TableCell>
+                     </TableRow>
+                     <TableRow>
+                        <TableCell className="font-medium text-muted-foreground pl-6">- Product Fees</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{formatCurrency(viewProduct.productFees, activeCountry?.currency || 'USD')}</TableCell>
+                     </TableRow>
+                     <TableRow className="font-bold bg-muted/50">
+                        <TableCell>Net Profit</TableCell>
+                        <TableCell className={`text-right ${viewProduct.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(viewProduct.profit, activeCountry?.currency || 'USD')}
+                        </TableCell>
+                     </TableRow>
+                   </TableBody>
+                </Table>
               </div>
             </div>
           )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setFbLinkModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveFbLink}>Save Changes</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

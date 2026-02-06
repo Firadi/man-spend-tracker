@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, LineChart, Package, Globe, Settings, Menu, PanelLeft, PanelLeftClose, Facebook } from "lucide-react";
+import { LayoutDashboard, LineChart, Package, Globe, Settings, Menu, PanelLeft, PanelLeftClose } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -9,7 +9,6 @@ import { useStore } from "@/lib/store";
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
   { name: 'Analyse', path: '/analyse', icon: LineChart },
-  { name: 'Facebook Ads', path: '/facebook-ads', icon: Facebook },
   { name: 'Products', path: '/products', icon: Package },
   { name: 'Countries', path: '/countries', icon: Globe },
 ];
