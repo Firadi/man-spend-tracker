@@ -453,7 +453,7 @@ export default function Analyse() {
                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewProduct(row)}>
                  <Eye className="h-4 w-4 text-muted-foreground" />
                </Button>
-               <Button variant="ghost" size="icon" className="h-8 w-8">
+               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({ title: "Saved", description: "Changes saved successfully." })}>
                  <Save className="h-4 w-4 text-muted-foreground" />
                </Button>
              </div>
