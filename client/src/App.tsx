@@ -10,39 +10,60 @@ import Analyse from "@/pages/Analyse";
 import Simulation from "@/pages/Simulation";
 import Products from "@/pages/Products";
 import Countries from "@/pages/Countries";
+import AuthPage from "@/pages/AuthPage";
 import { useStore } from "@/lib/store";
 import { useEffect } from "react";
+import { AuthProvider, useAuth } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/analyse" component={Analyse} />
-        <Route path="/simulation" component={Simulation} />
-        <Route path="/products" component={Products} />
-        <Route path="/countries" component={Countries} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      <Route path="/auth" component={AuthPage} />
+      <Route path="/:rest*">
+        {(params) => (
+          <Layout>
+            <Switch>
+              <ProtectedRoute path="/" component={Dashboard} />
+              <ProtectedRoute path="/analyse" component={Analyse} />
+              <ProtectedRoute path="/simulation" component={Simulation} />
+              <ProtectedRoute path="/products" component={Products} />
+              <ProtectedRoute path="/countries" component={Countries} />
+              <Route component={NotFound} />
+            </Switch>
+          </Layout>
+        )}
+      </Route>
+    </Switch>
   );
 }
 
 function App() {
-  const seed = useStore((state) => state.seed);
+  const { user } = useAuth();
+  const fetchData = useStore((state) => state.fetchData);
 
   useEffect(() => {
-    seed();
-  }, [seed]);
+    if (user) {
+      fetchData();
+    }
+  }, [user, fetchData]);
 
   return (
+    <TooltipProvider>
+      <Toaster />
+      <Router />
+    </TooltipProvider>
+  );
+}
+
+function AppWrapper() {
+  return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <AuthProvider>
+         <App />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
 
-export default App;
+export default AppWrapper;

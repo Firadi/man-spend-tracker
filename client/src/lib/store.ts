@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
+import { apiRequest } from './queryClient';
+import { useToast } from "@/hooks/use-toast";
 
 export type ProductStatus = 'Draft' | 'Active';
 
@@ -72,23 +73,26 @@ interface AppState {
   analysis: AnalysisState;
   simulations: SimulationData[];
 
-  addCountry: (country: Omit<Country, 'id'>) => void;
-  updateCountry: (id: string, data: Partial<Country>) => void;
-  deleteCountry: (id: string) => void;
+  // Fetch Actions
+  fetchData: () => Promise<void>;
 
-  addProduct: (product: Omit<Product, 'id'>) => void;
-  addProducts: (products: Omit<Product, 'id'>[]) => void;
-  updateProduct: (id: string, data: Partial<Product>) => void;
-  deleteProduct: (id: string) => void;
-  deleteProducts: (ids: string[]) => void;
+  addCountry: (country: Omit<Country, 'id'>) => Promise<void>;
+  updateCountry: (id: string, data: Partial<Country>) => Promise<void>;
+  deleteCountry: (id: string) => Promise<void>;
 
-  updateAnalysis: (countryId: string, productId: string, data: AnalysisOverride) => void;
+  addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
+  addProducts: (products: Omit<Product, 'id'>[]) => Promise<void>;
+  updateProduct: (id: string, data: Partial<Product>) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
+  deleteProducts: (ids: string[]) => Promise<void>;
+
+  updateAnalysis: (countryId: string, productId: string, data: AnalysisOverride) => Promise<void>;
   
   // Simulations
-  saveSimulation: (simulation: Omit<SimulationData, 'id' | 'date'>) => void;
-  deleteSimulation: (id: string) => void;
+  saveSimulation: (simulation: Omit<SimulationData, 'id' | 'date'>) => Promise<void>;
+  deleteSimulation: (id: string) => Promise<void>;
 
-  // Column reordering
+  // Column reordering (Local preference, persisted in local storage manually if needed, or just memory)
   columnOrder: string[];
   setColumnOrder: (order: string[]) => void;
 
@@ -97,12 +101,10 @@ interface AppState {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
   
-  seed: () => void;
+  seed: () => void; // Deprecated/Empty for SaaS mode
 }
 
-export const useStore = create<AppState>()(
-  persist(
-    (set, get) => ({
+export const useStore = create<AppState>((set, get) => ({
       countries: [],
       products: [],
       analysis: {},
@@ -123,99 +125,136 @@ export const useStore = create<AppState>()(
       ],
       sidebarCollapsed: false,
 
-      saveSimulation: (simulation) => set((state) => ({
-        simulations: [
-          { 
-            ...simulation, 
-            id: uuidv4(), 
-            date: new Date().toISOString() 
-          },
-          ...(state.simulations || [])
-        ]
-      })),
+      fetchData: async () => {
+        try {
+          const [countriesRes, productsRes, analysisRes, simulationsRes] = await Promise.all([
+            apiRequest("GET", "/api/countries"),
+            apiRequest("GET", "/api/products"),
+            apiRequest("GET", "/api/analysis"),
+            apiRequest("GET", "/api/simulations")
+          ]);
+          
+          const countries = await countriesRes.json();
+          const products = await productsRes.json();
+          const analysis = await analysisRes.json();
+          const simulations = await simulationsRes.json();
 
-      deleteSimulation: (id) => set((state) => ({
-        simulations: state.simulations.filter((s) => s.id !== id)
-      })),
+          set({ countries, products, analysis, simulations });
+        } catch (error) {
+          console.error("Failed to fetch data:", error);
+        }
+      },
+
+      saveSimulation: async (simulation) => {
+        const res = await apiRequest("POST", "/api/simulations", {
+          ...simulation,
+          id: uuidv4(),
+          date: new Date().toISOString()
+        });
+        const saved = await res.json();
+        set((state) => ({
+          simulations: [saved, ...(state.simulations || [])]
+        }));
+      },
+
+      deleteSimulation: async (id) => {
+        await apiRequest("DELETE", `/api/simulations/${id}`);
+        set((state) => ({
+          simulations: state.simulations.filter((s) => s.id !== id)
+        }));
+      },
 
       setColumnOrder: (order) => set({ columnOrder: order }),
       toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
-      addCountry: (country) => set((state) => ({  
-        countries: [...state.countries, { ...country, id: uuidv4() }] 
-      })),
+      addCountry: async (country) => {
+        const res = await apiRequest("POST", "/api/countries", { ...country, id: uuidv4() });
+        const saved = await res.json();
+        set((state) => ({  
+          countries: [...state.countries, saved] 
+        }));
+      },
       
-      updateCountry: (id, data) => set((state) => ({
-        countries: state.countries.map((c) => c.id === id ? { ...c, ...data } : c)
-      })),
+      updateCountry: async (id, data) => {
+        const res = await apiRequest("PUT", `/api/countries/${id}`, data);
+        const updated = await res.json();
+        set((state) => ({
+          countries: state.countries.map((c) => c.id === id ? updated : c)
+        }));
+      },
       
-      deleteCountry: (id) => set((state) => ({
-        countries: state.countries.filter((c) => c.id !== id),
-        // Clean up product assignments for the deleted country
-        products: state.products.map(p => ({
-          ...p,
-          countryIds: p.countryIds ? p.countryIds.filter(cid => cid !== id) : []
-        }))
-      })),
+      deleteCountry: async (id) => {
+        await apiRequest("DELETE", `/api/countries/${id}`);
+        set((state) => ({
+          countries: state.countries.filter((c) => c.id !== id),
+          // Clean up product assignments for the deleted country
+          products: state.products.map(p => ({
+            ...p,
+            countryIds: p.countryIds ? p.countryIds.filter(cid => cid !== id) : []
+          }))
+        }));
+      },
 
-      addProduct: (product) => set((state) => ({
-        products: [...state.products, { ...product, id: uuidv4(), countryIds: product.countryIds || [] }]
-      })),
+      addProduct: async (product) => {
+        const res = await apiRequest("POST", "/api/products", { ...product, id: uuidv4(), countryIds: product.countryIds || [] });
+        const saved = await res.json();
+        set((state) => ({
+          products: [...state.products, saved]
+        }));
+      },
 
-      addProducts: (newProducts) => set((state) => ({
-        products: [...state.products, ...newProducts.map(p => ({ ...p, id: uuidv4(), countryIds: p.countryIds || [] }))]
-      })),
+      addProducts: async (newProducts) => {
+        // Parallel requests for bulk add (or add bulk endpoint later)
+        await Promise.all(newProducts.map(p => 
+          apiRequest("POST", "/api/products", { ...p, id: uuidv4(), countryIds: p.countryIds || [] })
+        ));
+        // Refresh full list to be safe or append
+        await get().fetchData();
+      },
 
-      updateProduct: (id, data) => set((state) => ({
-        products: state.products.map((p) => p.id === id ? { ...p, ...data } : p)
-      })),
+      updateProduct: async (id, data) => {
+        const res = await apiRequest("PUT", `/api/products/${id}`, data);
+        const updated = await res.json();
+        set((state) => ({
+          products: state.products.map((p) => p.id === id ? updated : p)
+        }));
+      },
 
-      deleteProduct: (id) => set((state) => ({
-        products: state.products.filter((p) => p.id !== id)
-      })),
+      deleteProduct: async (id) => {
+        await apiRequest("DELETE", `/api/products/${id}`);
+        set((state) => ({
+          products: state.products.filter((p) => p.id !== id)
+        }));
+      },
 
-      deleteProducts: (ids) => set((state) => ({
-        products: state.products.filter((p) => !ids.includes(p.id))
-      })),
+      deleteProducts: async (ids) => {
+        await Promise.all(ids.map(id => apiRequest("DELETE", `/api/products/${id}`)));
+        set((state) => ({
+          products: state.products.filter((p) => !ids.includes(p.id))
+        }));
+      },
 
-      updateAnalysis: (countryId, productId, data) => set((state) => {
-        const countryAnalysis = state.analysis[countryId] || {};
-        const productAnalysis = countryAnalysis[productId] || {};
+      updateAnalysis: async (countryId, productId, data) => {
+        const res = await apiRequest("POST", `/api/analysis/${countryId}/${productId}`, data);
+        const saved = await res.json();
         
-        return {
-          analysis: {
-            ...state.analysis,
-            [countryId]: {
-              ...countryAnalysis,
-              [productId]: { ...productAnalysis, ...data }
+        set((state) => {
+          const countryAnalysis = state.analysis[countryId] || {};
+          const productAnalysis = countryAnalysis[productId] || {};
+          
+          return {
+            analysis: {
+              ...state.analysis,
+              [countryId]: {
+                ...countryAnalysis,
+                [productId]: { ...productAnalysis, ...data }
+              }
             }
-          }
-        };
-      }),
+          };
+        });
+      },
 
       seed: () => {
-        if (get().countries.length === 0) {
-          const usId = 'us';
-          const ukId = 'uk';
-          const deId = 'de';
-          set({
-            countries: [
-              { id: usId, name: 'United States', currency: 'USD', code: 'US', defaultShipping: 5, defaultCod: 0, defaultReturn: 2 },
-              { id: ukId, name: 'United Kingdom', currency: 'GBP', code: 'GB', defaultShipping: 4, defaultCod: 0, defaultReturn: 1.5 },
-              { id: deId, name: 'Germany', currency: 'EUR', code: 'DE', defaultShipping: 4.5, defaultCod: 2, defaultReturn: 0 },
-            ],
-            products: [
-              { id: '1', sku: 'TSHIRT-BLK-M', name: 'Classic Black T-Shirt (M)', status: 'Active', cost: 5, price: 25, countryIds: [usId, ukId] },
-              { id: '2', sku: 'MUG-WHT', name: 'Ceramic White Mug', status: 'Active', cost: 2, price: 12, countryIds: [usId] },
-              { id: '3', sku: 'NB-LEA', name: 'Leather Notebook', status: 'Draft', cost: 8, price: 30, countryIds: [usId, ukId, deId] },
-              { id: '4', sku: 'PEN-GLD', name: 'Gold Ballpoint Pen', status: 'Active', cost: 1.5, price: 15, countryIds: [ukId, deId] },
-            ]
-          });
-        }
+         // No-op for SaaS
       }
-    }),
-    {
-      name: 'ecommerce-kpi-storage-v2',
-    }
-  )
-);
+}));
