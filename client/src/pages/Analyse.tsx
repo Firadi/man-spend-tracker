@@ -389,6 +389,10 @@ export default function Analyse() {
 
   // CPA Calculation: ADS / DELIVERED ORDER
   const globalCPA = totals.deliveredOrders > 0 ? totals.ads / totals.deliveredOrders : 0;
+  // CPAD: Same as CPA (Ads / Delivered Orders)
+  const globalCPAD = globalCPA;
+  // CPD: Total Costs (Ads + Service Fees + Product Fees) / Delivered Orders
+  const globalCPD = totals.deliveredOrders > 0 ? (totals.ads + totals.serviceFees + totals.productFees) / totals.deliveredOrders : 0;
   
   // Also updating the "Est. Orders" card to just show Delivered Orders for clarity, 
   // or should it remain "Est. Orders" (calculated)?
@@ -635,28 +639,54 @@ export default function Analyse() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-         <Card className="p-4 bg-primary/5 border-primary/10">
-           <p className="text-sm font-medium text-muted-foreground">Total Profit</p>
-           <p className={`text-2xl font-bold ${totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-             {formatCurrency(totals.profit, activeCountry.currency)}
-           </p>
-         </Card>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+         {/* Row 1 */}
          <Card className="p-4">
            <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
            <p className="text-2xl font-bold">{formatCurrency(totals.revenue, activeCountry.currency)}</p>
          </Card>
          <Card className="p-4">
-           <p className="text-sm font-medium text-muted-foreground">Global CPA</p>
+           <p className="text-sm font-medium text-muted-foreground">Total Service Fees</p>
+           <p className="text-2xl font-bold">{formatCurrency(totals.serviceFees, activeCountry.currency)}</p>
+         </Card>
+         <Card className="p-4">
+           <p className="text-sm font-medium text-muted-foreground">Total Ads</p>
+           <p className="text-2xl font-bold">{formatCurrency(totals.ads, activeCountry.currency)}</p>
+         </Card>
+         <Card className="p-4">
+           <p className="text-sm font-medium text-muted-foreground">Total Product Fees</p>
+           <p className="text-2xl font-bold">{formatCurrency(totals.productFees, activeCountry.currency)}</p>
+         </Card>
+
+         {/* Row 2 */}
+         <Card className="p-4">
+           <p className="text-sm font-medium text-muted-foreground">CPA</p>
            <p className="text-2xl font-bold">
              {totals.deliveredOrders > 0 ? formatCurrency(globalCPA, activeCountry.currency) : '-'}
            </p>
          </Card>
          <Card className="p-4">
-           <p className="text-sm font-medium text-muted-foreground">Margin</p>
-           <p className={`text-2xl font-bold ${globalMargin > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-             {globalMargin.toFixed(1)}%
+           <p className="text-sm font-medium text-muted-foreground">CPAD</p>
+           <p className="text-2xl font-bold">
+             {totals.deliveredOrders > 0 ? formatCurrency(globalCPAD, activeCountry.currency) : '-'}
            </p>
+         </Card>
+         <Card className="p-4">
+           <p className="text-sm font-medium text-muted-foreground">CPD</p>
+           <p className="text-2xl font-bold">
+             {totals.deliveredOrders > 0 ? formatCurrency(globalCPD, activeCountry.currency) : '-'}
+           </p>
+         </Card>
+         <Card className="p-4 bg-primary/5 border-primary/10">
+           <p className="text-sm font-medium text-muted-foreground">Total Profit</p>
+           <div className="flex items-baseline gap-2">
+             <p className={`text-2xl font-bold ${totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+               {formatCurrency(totals.profit, activeCountry.currency)}
+             </p>
+             <span className={`text-sm font-medium ${globalMargin > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+               ({globalMargin.toFixed(1)}%)
+             </span>
+           </div>
          </Card>
       </div>
 
