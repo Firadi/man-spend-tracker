@@ -576,7 +576,7 @@ export default function Analyse() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                  <Card className="bg-muted/30">
                     <CardHeader className="p-4 pb-2">
-                       <CardTitle className="text-sm font-medium text-muted-foreground">CPA</CardTitle>
+                       <CardTitle className="text-sm font-medium text-muted-foreground">CPAD</CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 pt-0">
                        <div className="text-2xl font-bold">
