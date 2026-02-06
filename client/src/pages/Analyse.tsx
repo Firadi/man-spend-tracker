@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AlertCircle, GripHorizontal, Save, Eye, Download, FileSpreadsheet, FileImage, FileType } from "lucide-react";
+import { AlertCircle, GripHorizontal, Save, Eye, Download, FileSpreadsheet, FileImage, FileType, Search, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -147,6 +147,8 @@ export default function Analyse() {
   const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder, updateCountry } = useStore();
   const [selectedCountryId, setSelectedCountryId] = useState<string>(countries[0]?.id || "");
   const [showDrafts, setShowDrafts] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [profitFilter, setProfitFilter] = useState<'all' | 'profitable' | 'loss'>('all');
   const [viewProduct, setViewProduct] = useState<any | null>(null);
   const { toast } = useToast();
 
@@ -321,7 +323,7 @@ export default function Analyse() {
   };
 
   // Calculations
-  const rows = filteredProducts.map(p => {
+  const calculatedRows = filteredProducts.map(p => {
     const revenue = getAnalysisValue(p.id, 'revenue');
     const ads = getAnalysisValue(p.id, 'ads');
     const serviceFees = getAnalysisValue(p.id, 'serviceFees');
@@ -355,6 +357,18 @@ export default function Analyse() {
       deliveryRatePerLead,
       profit
     };
+  });
+
+  const rows = calculatedRows.filter(row => {
+    const searchMatch = !searchQuery || 
+      row.product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      row.product.sku.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    let profitMatch = true;
+    if (profitFilter === 'profitable') profitMatch = row.profit > 0;
+    if (profitFilter === 'loss') profitMatch = row.profit < 0;
+
+    return searchMatch && profitMatch;
   });
 
   const totals = rows.reduce((acc, row) => ({
@@ -495,53 +509,82 @@ export default function Analyse() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Analyse</h2>
-          <p className="text-muted-foreground">Profitability analysis for {activeCountry.name}.</p>
-        </div>
-        
-        <div className="flex items-center gap-4">
-          <div className="flex items-center space-x-2">
-            <Switch id="drafts" checked={showDrafts} onCheckedChange={setShowDrafts} />
-            <Label htmlFor="drafts">Show Drafts</Label>
+      <div className="flex flex-col space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Analyse</h2>
+            <p className="text-muted-foreground">Profitability analysis for {activeCountry.name}.</p>
           </div>
           
-          <Select value={activeCountryId} onValueChange={setSelectedCountryId}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select Country" />
-            </SelectTrigger>
-            <SelectContent>
-              {countries.map(c => (
-                <SelectItem key={c.id} value={c.id}>{c.name} ({c.currency})</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <Switch id="drafts" checked={showDrafts} onCheckedChange={setShowDrafts} />
+              <Label htmlFor="drafts">Show Drafts</Label>
+            </div>
+            
+            <Select value={activeCountryId} onValueChange={setSelectedCountryId}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select Country" />
+              </SelectTrigger>
+              <SelectContent>
+                {countries.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name} ({c.currency})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 gap-1">
-                <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">Export</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Export Options</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleExportExcel}>
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                <span>Excel (.xlsx)</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportPDF}>
-                <FileImage className="mr-2 h-4 w-4" />
-                <span>PDF Snapshot</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportSVG}>
-                <FileType className="mr-2 h-4 w-4" />
-                <span>SVG Snapshot</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 gap-1">
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline">Export</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportExcel}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  <span>Excel (.xlsx)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPDF}>
+                  <FileImage className="mr-2 h-4 w-4" />
+                  <span>PDF Snapshot</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportSVG}>
+                  <FileType className="mr-2 h-4 w-4" />
+                  <span>SVG Snapshot</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 items-center">
+          <div className="relative w-full sm:w-[300px]">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Filter products..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+             <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
+             <Select value={profitFilter} onValueChange={(val: any) => setProfitFilter(val)}>
+               <SelectTrigger className="w-[180px]">
+                 <SelectValue placeholder="Profitability" />
+               </SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Profitability</SelectItem>
+                 <SelectItem value="profitable">Profitable Only</SelectItem>
+                 <SelectItem value="loss">Loss Only</SelectItem>
+               </SelectContent>
+             </Select>
+          </div>
         </div>
       </div>
 
