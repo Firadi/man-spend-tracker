@@ -111,12 +111,12 @@ export default function Simulation() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-amber-200 to-yellow-500 bg-clip-text text-transparent w-fit">COD Simulator</h2>
+          <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent w-fit">COD Simulator</h2>
           <p className="text-muted-foreground mt-1">
             Analyze profitability with real-time currency conversion (1 USD = 130 KES).
           </p>
         </div>
-        <Badge variant="outline" className="text-sm px-4 py-1.5 h-auto bg-yellow-500/10 border-yellow-500/30 text-yellow-500 gap-2 backdrop-blur-sm">
+        <Badge variant="outline" className="text-sm px-4 py-1.5 h-auto bg-blue-500/10 border-blue-500/30 text-blue-500 gap-2 backdrop-blur-sm">
           <Coins className="w-4 h-4" />
           <span>Currency: USD ($)</span>
         </Badge>
@@ -127,7 +127,7 @@ export default function Simulation() {
         <div className="lg:col-span-5 h-full">
             <Card className="border-muted/30 shadow-lg bg-card/80 backdrop-blur-sm h-full flex flex-col">
               <CardHeader className="pb-4 border-b border-muted/20">
-                <CardTitle className="text-amber-500 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
+                <CardTitle className="text-blue-500 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
                    <Calculator className="w-4 h-4" /> Inputs
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">Enter your campaign metrics below.</p>
@@ -143,7 +143,7 @@ export default function Simulation() {
                           value={inputs.totalOrders || ''}
                           onChange={(e) => handleInputChange('totalOrders', e.target.value)}
                           placeholder="0"
-                          className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-amber-500/50 pl-9"
+                          className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-blue-500/50 pl-9"
                         />
                         <Package className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground/50" />
                     </div>
@@ -158,7 +158,7 @@ export default function Simulation() {
                           value={inputs.confirmationRate || ''}
                           onChange={(e) => handleInputChange('confirmationRate', e.target.value)}
                           placeholder="0"
-                          className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-amber-500/50 pl-9"
+                          className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-blue-500/50 pl-9"
                         />
                         <CheckCircle className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground/50" />
                     </div>
@@ -176,7 +176,7 @@ export default function Simulation() {
                           value={inputs.deliveryRate || ''}
                           onChange={(e) => handleInputChange('deliveryRate', e.target.value)}
                           placeholder="0"
-                          className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-amber-500/50 pl-9"
+                          className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-blue-500/50 pl-9"
                         />
                         <Truck className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground/50" />
                     </div>
@@ -194,11 +194,11 @@ export default function Simulation() {
                           value={inputs.sellingPrice || ''}
                           onChange={(e) => handleInputChange('sellingPrice', e.target.value)}
                           placeholder="0"
-                          className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-amber-500/50 pl-9"
+                          className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-blue-500/50 pl-9"
                         />
                         <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground/50" />
                     </div>
-                    <p className="text-[10px] text-amber-500/70 font-mono">
+                    <p className="text-[10px] text-blue-500/70 font-mono">
                       {formatKES(inputs.sellingPrice)}
                     </p>
                   </div>
@@ -213,7 +213,7 @@ export default function Simulation() {
                       value={inputs.productCost || ''}
                       onChange={(e) => handleInputChange('productCost', e.target.value)}
                       placeholder="0"
-                      className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-amber-500/50"
+                      className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-blue-500/50"
                     />
                     <p className="text-[10px] text-muted-foreground font-mono">
                       {formatKES(inputs.productCost)}
@@ -228,7 +228,7 @@ export default function Simulation() {
                       value={inputs.serviceFee || ''}
                       onChange={(e) => handleInputChange('serviceFee', e.target.value)}
                       placeholder="0"
-                      className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-amber-500/50"
+                      className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-blue-500/50"
                     />
                     <p className="text-[10px] text-muted-foreground italic">
                       Default: 5.7
@@ -243,7 +243,7 @@ export default function Simulation() {
                       value={inputs.adsCost || ''}
                       onChange={(e) => handleInputChange('adsCost', e.target.value)}
                       placeholder="0"
-                      className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-amber-500/50"
+                      className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-blue-500/50"
                     />
                   </div>
 
@@ -255,13 +255,13 @@ export default function Simulation() {
                       value={inputs.otherCost || ''}
                       onChange={(e) => handleInputChange('otherCost', e.target.value)}
                       placeholder="0"
-                      className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-amber-500/50"
+                      className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-blue-500/50"
                     />
                   </div>
                 </div>
 
                 <div className="flex gap-4 pt-6 mt-auto">
-                  <Button onClick={calculate} className="bg-amber-500 hover:bg-amber-600 text-black font-bold flex-1 shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.02]">
+                  <Button onClick={calculate} className="bg-blue-600 hover:bg-blue-700 text-white font-bold flex-1 shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.02]">
                     Calculate Profit
                   </Button>
                   <Button onClick={reset} variant="outline" className="flex-1 hover:bg-muted/50 border-muted-foreground/20">
@@ -276,7 +276,7 @@ export default function Simulation() {
         <div className="lg:col-span-7 h-full">
             <Card className="border-muted/30 shadow-lg bg-card/80 backdrop-blur-sm h-full">
               <CardHeader className="pb-4 border-b border-muted/20">
-                <CardTitle className="text-amber-500 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
+                <CardTitle className="text-blue-500 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
                     <TrendingUp className="w-4 h-4" /> Results Analysis
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">Comprehensive breakdown of your simulation.</p>
@@ -295,16 +295,16 @@ export default function Simulation() {
                     
                     {/* Top Stats Grid */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-muted/20 rounded-xl p-4 border border-muted/20 relative overflow-hidden group hover:border-amber-500/20 transition-colors">
-                            <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110" />
+                        <div className="bg-muted/20 rounded-xl p-4 border border-muted/20 relative overflow-hidden group hover:border-blue-500/20 transition-colors">
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110" />
                             <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium mb-1">Confirmed Orders</p>
                             <p className="text-3xl font-bold tracking-tight">{formatNumber(results.confirmedOrders)}</p>
                             <p className="text-[10px] text-muted-foreground mt-2 font-mono bg-background/50 w-fit px-1.5 py-0.5 rounded">
                                 {inputs.confirmationRate}% Rate
                             </p>
                         </div>
-                        <div className="bg-muted/20 rounded-xl p-4 border border-muted/20 relative overflow-hidden group hover:border-amber-500/20 transition-colors">
-                            <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110" />
+                        <div className="bg-muted/20 rounded-xl p-4 border border-muted/20 relative overflow-hidden group hover:border-blue-500/20 transition-colors">
+                            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110" />
                             <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium mb-1">Delivered Orders</p>
                             <p className="text-3xl font-bold tracking-tight">{formatNumber(results.deliveredOrders)}</p>
                             <p className="text-[10px] text-muted-foreground mt-2 font-mono bg-background/50 w-fit px-1.5 py-0.5 rounded">
@@ -362,7 +362,7 @@ export default function Simulation() {
         <Card className="border-muted/30 shadow-lg bg-card/80 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-8 duration-700">
           <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-muted/20">
             <div>
-               <CardTitle className="text-amber-500 font-bold uppercase text-sm tracking-wider">Metrics Breakdown</CardTitle>
+               <CardTitle className="text-blue-500 font-bold uppercase text-sm tracking-wider">Metrics Breakdown</CardTitle>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/20 px-3 py-1 rounded-full border border-muted/20">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
@@ -428,19 +428,19 @@ export default function Simulation() {
                     </TableCell>
                   </TableRow>
 
-                  <TableRow className="bg-amber-500/5 hover:bg-amber-500/10 border-0 transition-colors">
+                  <TableRow className="bg-blue-500/5 hover:bg-blue-500/10 border-0 transition-colors">
                     <TableCell className="py-6 pl-6">
-                      <div className="font-bold text-amber-500 text-sm">Total Delivery Cost</div>
-                      <div className="text-amber-500/70 text-[10px] uppercase tracking-wide mt-0.5">Real Cost per Delivered</div>
+                      <div className="font-bold text-blue-500 text-sm">Total Delivery Cost</div>
+                      <div className="text-blue-500/70 text-[10px] uppercase tracking-wide mt-0.5">Real Cost per Delivered</div>
                     </TableCell>
                     <TableCell className="font-mono text-muted-foreground py-6 text-xs">
-                      <span className="bg-background/50 px-2 py-1 rounded border border-muted/30 text-amber-500/80">
+                      <span className="bg-background/50 px-2 py-1 rounded border border-muted/30 text-blue-500/80">
                          CPD + CPA(delivered)
                       </span>
                     </TableCell>
                     <TableCell className="text-right py-6 pr-6">
-                       <div className="font-black text-xl text-amber-500">{formatCurrency(results.tdc, 'USD')}</div>
-                       <div className="text-amber-500/70 text-[10px] font-mono mt-0.5">{formatKES(results.tdc)}</div>
+                       <div className="font-black text-xl text-blue-500">{formatCurrency(results.tdc, 'USD')}</div>
+                       <div className="text-blue-500/70 text-[10px] font-mono mt-0.5">{formatKES(results.tdc)}</div>
                     </TableCell>
                   </TableRow>
                 </TableBody>
