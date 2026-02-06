@@ -117,7 +117,9 @@ export default function Analyse() {
     
     // Defaults
     if (field === 'serviceFees' && activeCountry) {
-      return activeCountry.defaultShipping + activeCountry.defaultCod + activeCountry.defaultReturn;
+      const delivered = getAnalysisValue(productId, 'deliveredOrders');
+      const feePerOrder = activeCountry.defaultShipping + activeCountry.defaultCod + activeCountry.defaultReturn;
+      return delivered * feePerOrder;
     }
     return 0;
   };

@@ -73,7 +73,7 @@ export const useStore = create<AppState>()(
       countries: [],
       products: [],
       analysis: {},
-      columnOrder: ['product', 'revenue', 'ads', 'serviceFees', 'productFees', 'deliveredOrders', 'profit'],
+      columnOrder: ['product', 'deliveredOrders', 'revenue', 'ads', 'serviceFees', 'productFees', 'profit'],
       sidebarCollapsed: false,
 
       setColumnOrder: (order) => set({ columnOrder: order }),
@@ -153,7 +153,7 @@ export const useStore = create<AppState>()(
       }
     }),
     {
-      name: 'ecommerce-kpi-storage',
+      name: 'ecommerce-kpi-storage-v2',
     }
   )
 );
