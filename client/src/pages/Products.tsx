@@ -18,6 +18,16 @@ import Papa from "papaparse";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Schema for adding/editing a single product
 const productSchema = z.object({
@@ -29,7 +39,7 @@ const productSchema = z.object({
 });
 
 export default function Products() {
-  const { products, countries, addProduct, addProducts, updateProduct, deleteProduct } = useStore();
+  const { products, countries, addProduct, addProducts, updateProduct, deleteProduct, deleteProducts } = useStore();
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -38,6 +48,10 @@ export default function Products() {
   // Selection State
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isAssignCountryOpen, setIsAssignCountryOpen] = useState(false);
+
+  // Delete Dialog State
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [idsToDelete, setIdsToDelete] = useState<string[]>([]);
 
   // Single Product Form
   const form = useForm<z.infer<typeof productSchema>>({
@@ -96,10 +110,28 @@ export default function Products() {
     form.reset();
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Delete this product?")) {
-      deleteProduct(id);
+  // Delete Handler
+  const confirmDelete = (id: string) => {
+    setIdsToDelete([id]);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmBulkDelete = () => {
+    setIdsToDelete(Array.from(selectedIds));
+    setDeleteDialogOpen(true);
+  };
+
+  const executeDelete = () => {
+    if (idsToDelete.length === 1) {
+      deleteProduct(idsToDelete[0]);
+      toast({ title: "Product deleted" });
+    } else if (idsToDelete.length > 1) {
+      deleteProducts(idsToDelete);
+      toast({ title: `Deleted ${idsToDelete.length} products` });
     }
+    setIdsToDelete([]);
+    setDeleteDialogOpen(false);
+    setSelectedIds(new Set()); // Clear selection if it was a bulk delete
   };
 
   const toggleStatus = (product: Product) => {
@@ -126,12 +158,7 @@ export default function Products() {
      selectedIds.forEach(id => {
        const product = products.find(p => p.id === id);
        if (product) {
-         // Merge existing and new? Or overwrite? 
-         // User said "assign them to which country they appear in".
-         // Usually bulk assign means "add to these countries" or "set to these countries".
-         // Let's go with "Add to these countries" to be safe, or maybe overwrite? 
-         // Let's assume overwrite/set unique for simplicity in logic, or simple merge.
-         // Let's do a merge: Ensure these countries are in the list.
+         // Merge logic: ensure unique
          const current = new Set(product.countryIds || []);
          newCountryIds.forEach(cid => current.add(cid));
          updateProduct(id, { countryIds: Array.from(current) });
@@ -142,7 +169,7 @@ export default function Products() {
      setSelectedIds(new Set());
   };
 
-  // Import Logic (unchanged mostly, but adding empty countryIds)
+  // Import Logic
   const handleParse = (content: string, type: 'csv' | 'paste') => {
     Papa.parse(content, {
       header: true,
@@ -396,9 +423,27 @@ export default function Products() {
             <Button size="sm" variant="outline" onClick={() => bulkSetStatus('Active')}>Set Active</Button>
             <Button size="sm" variant="outline" onClick={() => bulkSetStatus('Draft')}>Set Draft</Button>
             <Button size="sm" variant="outline" onClick={openAssignDialog}>Assign Countries</Button>
+            <Button size="sm" variant="destructive" onClick={confirmBulkDelete} className="ml-auto">Delete Selected</Button>
           </div>
         )}
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the selected {idsToDelete.length} product{idsToDelete.length > 1 ? 's' : ''}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={isAssignCountryOpen} onOpenChange={setIsAssignCountryOpen}>
         <DialogContent>
@@ -499,7 +544,7 @@ export default function Products() {
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(product)}>
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(product.id)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirmDelete(product.id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>

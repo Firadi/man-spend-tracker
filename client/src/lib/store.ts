@@ -51,6 +51,7 @@ interface AppState {
   addProducts: (products: Omit<Product, 'id'>[]) => void;
   updateProduct: (id: string, data: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
+  deleteProducts: (ids: string[]) => void;
 
   updateAnalysis: (countryId: string, productId: string, data: AnalysisOverride) => void;
   
@@ -90,6 +91,10 @@ export const useStore = create<AppState>()(
 
       deleteProduct: (id) => set((state) => ({
         products: state.products.filter((p) => p.id !== id)
+      })),
+
+      deleteProducts: (ids) => set((state) => ({
+        products: state.products.filter((p) => !ids.includes(p.id))
       })),
 
       updateAnalysis: (countryId, productId, data) => set((state) => {
