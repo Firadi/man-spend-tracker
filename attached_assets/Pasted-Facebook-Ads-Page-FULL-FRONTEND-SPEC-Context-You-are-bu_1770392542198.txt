@@ -1,0 +1,272 @@
+Facebook Ads Page (FULL FRONTEND SPEC)
+📌 Context
+
+You are building a React frontend-only page called Facebook Ads inside an existing SaaS-style web app.
+
+This page is NOT connected to Facebook yet.
+There is NO backend, NO OAuth, NO API calls at this stage.
+
+However, the page must be 100% API-ready:
+
+Data models must exactly match Facebook Marketing API concepts
+
+UI and logic must NOT need refactoring when backend is added later
+
+All data must persist in localStorage.
+
+🧱 Page Purpose (VERY IMPORTANT)
+
+The Facebook Ads page is a preparation and selection page.
+
+Its only responsibilities are:
+
+Display Facebook Ads structure (Campaign → Ad Set → Ad)
+
+Allow selecting Ad Sets only
+
+Prepare Ad Set selections to be used later in Analyse page
+
+Store selected Ad Sets temporarily (NOT linked to products here)
+
+❌ This page must NOT:
+
+Link products
+
+Calculate spend
+
+Show KPIs
+
+Fetch real Facebook data
+
+🧭 Page Location
+
+Page name: Facebook Ads
+
+Appears in left sidebar navigation
+
+🖥️ UI LAYOUT (DETAILED)
+1️⃣ Top Connection Section
+
+A card at the top of the page containing:
+
+Connection Status
+
+Badge:
+
+🔴 Not Connected (default)
+
+🟢 Connected (mock toggle for UI testing)
+
+Button
+
+Text: Connect Facebook Ads
+
+This is a placeholder button
+
+Clicking it only toggles the status (no OAuth logic)
+
+Ad Account Selector
+
+Dropdown
+
+Mock data
+
+At least one option:
+
+act_123456789
+
+Must be designed as if multiple ad accounts can exist
+
+2️⃣ Search & Filters Section
+
+Directly under the connection section:
+
+Search Input
+
+Searches across:
+
+Campaign name
+
+Ad Set name
+
+Ad name
+
+Case-insensitive
+
+Instant filtering
+
+Filters
+
+Dropdowns for:
+
+Campaign (unique campaign names)
+
+Ad Set (unique ad set names)
+
+Status:
+
+All
+
+Active
+
+Paused
+
+Filters must work together.
+
+3️⃣ Main Table (Spreadsheet-like)
+Table Columns (EXACT ORDER)
+
+Checkbox (for selection)
+
+Campaign
+
+Ad Set
+
+Ad
+
+Status
+
+Example Rows
+☐ | Winter Sales | Broad – Men | Creative 1 | Active
+☐ | Winter Sales | Broad – Men | Creative 2 | Active
+☐ | Winter Sales | Retargeting | Video 1   | Paused
+☐ | Testing      | ABO Test    | Image A   | Active
+Status Styling
+
+Active → green label
+
+Paused → red label
+
+🧠 SELECTION LOGIC (CRITICAL)
+Selection Unit
+
+Selection is BY AD SET, not by Ad
+
+Ads are display-only
+
+Behavior
+
+If a user selects one row:
+
+All rows with the same adSetId become selected
+
+Unselecting one unselects the whole Ad Set
+
+Selection state must stay consistent across filtered views
+
+📌 Bulk Selection Bar (IMPORTANT UX)
+
+When at least 1 Ad Set is selected:
+
+Show a sticky bottom bar with:
+
+Text: X Ad Sets selected
+
+Button: Clear selection
+
+Button: Save selection
+
+Clear selection
+
+Unselects all Ad Sets
+
+Save selection
+
+Saves selected Ad Sets to localStorage
+
+Does NOT link to products
+
+Only prepares data for Analyse page
+
+🗂️ DATA MODELS (DO NOT CHANGE)
+Table Rows (API-READY)
+fbAdsTable = [
+  {
+    campaignId: "cmp_1",
+    campaignName: "Winter Sales",
+    adSetId: "adset_1",
+    adSetName: "Broad – Men",
+    adId: "ad_1",
+    adName: "Creative 1",
+    status: "Active" // or "Paused"
+  }
+]
+
+❗ Must be flat structure (NO nesting)
+
+Selected Ad Sets (Temporary Storage)
+tempSelectedAdSets = [
+  {
+    adSetId: "adset_1",
+    adSetName: "Broad – Men",
+    campaignId: "cmp_1",
+    campaignName: "Winter Sales"
+  }
+]
+
+Stored in localStorage
+
+Restored on page reload
+
+Used later by Analyse page
+
+🌱 Seed / Mock Data (MANDATORY)
+
+On first load, populate localStorage with:
+
+At least 2 campaigns
+
+At least 3 ad sets
+
+Multiple ads per ad set
+
+The page must NEVER be empty on first load.
+
+💾 Persistence Rules
+
+fbAdsTable → localStorage
+
+tempSelectedAdSets → localStorage
+
+Selection must persist on refresh
+
+Filters/search must NOT break selection
+
+🎨 UX Rules
+
+Clean, spreadsheet-like UI
+
+Fast interaction (no modals here)
+
+No blocking validations
+
+No error messages related to missing API
+
+Designed for large tables (performance-friendly)
+
+🚫 DO NOT IMPLEMENT
+
+Facebook OAuth
+
+Facebook SDK
+
+Backend calls
+
+Spend fetching
+
+Product linking
+
+Only prepare the frontend structure.
+
+✅ Final Requirement
+
+This Facebook Ads page must be:
+
+Production-quality UI
+
+API-ready
+
+Fully compatible with future backend integration
+
+Usable immediately with mock data
+
