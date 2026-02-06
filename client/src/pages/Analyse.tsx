@@ -6,10 +6,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, GripHorizontal, Save } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { AlertCircle, GripHorizontal, Save, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DndContext,
   closestCenter,
@@ -129,6 +136,7 @@ export default function Analyse() {
   const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder, updateCountry } = useStore();
   const [selectedCountryId, setSelectedCountryId] = useState<string>(countries[0]?.id || "");
   const [showDrafts, setShowDrafts] = useState(false);
+  const [viewProduct, setViewProduct] = useState<any | null>(null);
   const { toast } = useToast();
 
   // Fix for persisted legacy column order:
@@ -500,19 +508,29 @@ export default function Analyse() {
                   rows.map((row) => (
                     <TableRow key={row.product.id}>
                        {currentColumnOrder.map(colId => renderCell(row, colId))}
-                       <TableCell className="p-1 text-center">
-                         <Button 
-                           variant="ghost" 
-                           size="icon" 
-                           className="h-8 w-8 text-muted-foreground hover:text-primary"
-                           onClick={() => toast({ 
-                             title: "Saved", 
-                             description: "Analysis updated successfully.",
-                             duration: 2000,
-                           })}
-                         >
-                           <Save className="w-4 h-4" />
-                         </Button>
+                       <TableCell className="p-1 text-center whitespace-nowrap">
+                         <div className="flex items-center justify-center gap-1">
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             className="h-8 w-8 text-muted-foreground hover:text-primary"
+                             onClick={() => toast({ 
+                               title: "Saved", 
+                               description: "Analysis updated successfully.",
+                               duration: 2000,
+                             })}
+                           >
+                             <Save className="w-4 h-4" />
+                           </Button>
+                           <Button 
+                             variant="ghost" 
+                             size="icon" 
+                             className="h-8 w-8 text-muted-foreground hover:text-primary"
+                             onClick={() => setViewProduct(row)}
+                           >
+                             <Eye className="w-4 h-4" />
+                           </Button>
+                         </div>
                        </TableCell>
                     </TableRow>
                   ))
@@ -528,6 +546,116 @@ export default function Analyse() {
           </div>
         </DndContext>
       </div>
+
+      <Dialog open={!!viewProduct} onOpenChange={(open) => !open && setViewProduct(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Product Analysis Details</DialogTitle>
+            <DialogDescription>
+              Detailed breakdown for {viewProduct?.product.name}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewProduct && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <Label className="text-muted-foreground">Product</Label>
+                  <div className="font-medium">{viewProduct.product.name}</div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">SKU</Label>
+                  <div className="font-mono">{viewProduct.product.sku}</div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Country</Label>
+                  <div>{activeCountry?.name} ({activeCountry?.currency})</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                 <Card className="bg-muted/30">
+                    <CardHeader className="p-4 pb-2">
+                       <CardTitle className="text-sm font-medium text-muted-foreground">CPA</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                       <div className="text-2xl font-bold">
+                         {viewProduct.deliveredOrders > 0 
+                           ? formatCurrency(viewProduct.ads / viewProduct.deliveredOrders, activeCountry?.currency || 'USD')
+                           : '-'}
+                       </div>
+                       <p className="text-xs text-muted-foreground">Ads / Delivered Orders</p>
+                    </CardContent>
+                 </Card>
+                 <Card className="bg-muted/30">
+                    <CardHeader className="p-4 pb-2">
+                       <CardTitle className="text-sm font-medium text-muted-foreground">CPD</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                       <div className="text-2xl font-bold">
+                         {viewProduct.deliveredOrders > 0 
+                           ? formatCurrency((viewProduct.ads + viewProduct.serviceFees + viewProduct.productFees) / viewProduct.deliveredOrders, activeCountry?.currency || 'USD')
+                           : '-'}
+                       </div>
+                       <p className="text-xs text-muted-foreground">Total Costs / Delivered</p>
+                    </CardContent>
+                 </Card>
+                 <Card className="bg-muted/30">
+                    <CardHeader className="p-4 pb-2">
+                       <CardTitle className="text-sm font-medium text-muted-foreground">Profit</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                       <div className={`text-2xl font-bold ${viewProduct.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                         {formatCurrency(viewProduct.profit, activeCountry?.currency || 'USD')}
+                       </div>
+                    </CardContent>
+                 </Card>
+              </div>
+
+              <div className="border rounded-md overflow-hidden">
+                <Table>
+                   <TableBody>
+                     <TableRow>
+                        <TableCell className="font-medium">Total Orders</TableCell>
+                        <TableCell className="text-right">{formatNumber(viewProduct.totalOrders)}</TableCell>
+                     </TableRow>
+                     <TableRow>
+                        <TableCell className="font-medium">Orders Confirmed</TableCell>
+                        <TableCell className="text-right">{formatNumber(viewProduct.ordersConfirmed)}</TableCell>
+                     </TableRow>
+                     <TableRow>
+                        <TableCell className="font-medium">Delivered Orders</TableCell>
+                        <TableCell className="text-right">{formatNumber(viewProduct.deliveredOrders)}</TableCell>
+                     </TableRow>
+                     <TableRow className="border-t-2">
+                        <TableCell className="font-medium">Revenue</TableCell>
+                        <TableCell className="text-right">{formatCurrency(viewProduct.revenue, activeCountry?.currency || 'USD')}</TableCell>
+                     </TableRow>
+                     <TableRow>
+                        <TableCell className="font-medium text-muted-foreground pl-6">- Ads</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{formatCurrency(viewProduct.ads, activeCountry?.currency || 'USD')}</TableCell>
+                     </TableRow>
+                     <TableRow>
+                        <TableCell className="font-medium text-muted-foreground pl-6">- Service Fees</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{formatCurrency(viewProduct.serviceFees, activeCountry?.currency || 'USD')}</TableCell>
+                     </TableRow>
+                     <TableRow>
+                        <TableCell className="font-medium text-muted-foreground pl-6">- Product Fees</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{formatCurrency(viewProduct.productFees, activeCountry?.currency || 'USD')}</TableCell>
+                     </TableRow>
+                     <TableRow className="font-bold bg-muted/50">
+                        <TableCell>Net Profit</TableCell>
+                        <TableCell className={`text-right ${viewProduct.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {formatCurrency(viewProduct.profit, activeCountry?.currency || 'USD')}
+                        </TableCell>
+                     </TableRow>
+                   </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
