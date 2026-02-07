@@ -95,8 +95,10 @@ interface AppState {
   deleteSimulation: (id: string) => Promise<void>;
 
   dailyAds: DailyAdEntry[];
+  dailyAdsTotals: Record<string, number>;
   fetchDailyAds: (startDate: string, endDate: string) => Promise<void>;
   saveDailyAds: (entries: DailyAdEntry[]) => Promise<void>;
+  fetchDailyAdsTotals: () => Promise<void>;
 
   columnOrder: string[];
   setColumnOrder: (order: string[]) => void;
@@ -113,6 +115,7 @@ export const useStore = create<AppState>((set, get) => ({
       analysis: {},
       simulations: [],
       dailyAds: [],
+      dailyAdsTotals: {},
       columnOrder: [
         'product', 
         'totalOrders', 
@@ -131,19 +134,21 @@ export const useStore = create<AppState>((set, get) => ({
 
       fetchData: async () => {
         try {
-          const [countriesRes, productsRes, analysisRes, simulationsRes] = await Promise.all([
+          const [countriesRes, productsRes, analysisRes, simulationsRes, dailyAdsTotalsRes] = await Promise.all([
             apiRequest("GET", "/api/countries"),
             apiRequest("GET", "/api/products"),
             apiRequest("GET", "/api/analysis"),
-            apiRequest("GET", "/api/simulations")
+            apiRequest("GET", "/api/simulations"),
+            apiRequest("GET", "/api/daily-ads/totals")
           ]);
           
           const countries = await countriesRes.json();
           const products = await productsRes.json();
           const analysis = await analysisRes.json();
           const simulations = await simulationsRes.json();
+          const dailyAdsTotals = await dailyAdsTotalsRes.json();
 
-          set({ countries, products, analysis, simulations });
+          set({ countries, products, analysis, simulations, dailyAdsTotals });
         } catch (error) {
           console.error("Failed to fetch data:", error);
         }
@@ -280,6 +285,17 @@ export const useStore = create<AppState>((set, get) => ({
           }
           return { dailyAds: updated };
         });
+        get().fetchDailyAdsTotals();
+      },
+
+      fetchDailyAdsTotals: async () => {
+        try {
+          const res = await apiRequest("GET", "/api/daily-ads/totals");
+          const data = await res.json();
+          set({ dailyAdsTotals: data });
+        } catch (error) {
+          console.error("Failed to fetch daily ads totals:", error);
+        }
       },
 
       seed: () => {

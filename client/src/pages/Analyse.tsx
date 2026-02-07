@@ -176,7 +176,7 @@ function SortableHeader({ id, column }: { id: string, column: Column }) {
 }
 
 export default function Analyse() {
-  const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder, updateCountry } = useStore();
+  const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder, updateCountry, dailyAdsTotals } = useStore();
   const [selectedCountryId, setSelectedCountryId] = useState<string>(countries[0]?.id || "");
   const [showDrafts, setShowDrafts] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -339,6 +339,12 @@ export default function Analyse() {
 
   const getAnalysisValue = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'deliveredOrders' | 'totalOrders' | 'ordersConfirmed'): number => {
     if (!activeCountryId) return 0;
+
+    if (field === 'ads') {
+      const dailyTotal = dailyAdsTotals[productId];
+      if (dailyTotal !== undefined && dailyTotal > 0) return dailyTotal;
+    }
+
     const override = analysis[activeCountryId]?.[productId]?.[field];
     if (override !== undefined) return override;
     

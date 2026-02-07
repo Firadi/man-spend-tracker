@@ -115,6 +115,16 @@ export async function registerRoutes(
   });
 
   // Daily Ads
+  app.get("/api/daily-ads/totals", ensureAuthenticated, async (req, res) => {
+    const user = req.user as any;
+    const totals = await storage.getDailyAdsTotals(user.id);
+    const map: Record<string, number> = {};
+    for (const t of totals) {
+      map[t.productId] = t.total;
+    }
+    res.json(map);
+  });
+
   app.get("/api/daily-ads", ensureAuthenticated, async (req, res) => {
     const user = req.user as any;
     const { startDate, endDate } = req.query;

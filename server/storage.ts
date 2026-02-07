@@ -2,7 +2,7 @@ import { type User, type InsertUser, type Country, type InsertCountry, type Prod
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { db, pool } from "./db";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, sql } from "drizzle-orm";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -35,6 +35,7 @@ export interface IStorage {
   // Daily Ads
   getDailyAds(userId: number, startDate?: string, endDate?: string): Promise<DailyAd[]>;
   saveDailyAds(userId: number, entries: InsertDailyAd[]): Promise<DailyAd[]>;
+  getDailyAdsTotals(userId: number): Promise<{ productId: string; total: number }[]>;
 
   sessionStore: session.Store;
 }
@@ -203,6 +204,18 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return results;
+  }
+
+  async getDailyAdsTotals(userId: number): Promise<{ productId: string; total: number }[]> {
+    const result = await db
+      .select({
+        productId: dailyAds.productId,
+        total: sql<number>`COALESCE(SUM(${dailyAds.amount}), 0)`.as('total'),
+      })
+      .from(dailyAds)
+      .where(eq(dailyAds.userId, userId))
+      .groupBy(dailyAds.productId);
+    return result.map(r => ({ productId: r.productId, total: Number(r.total) }));
   }
 }
 
