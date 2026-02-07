@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Upload, Pencil, Trash2, FileSpreadsheet, Clipboard, Check, Filter } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Upload, Pencil, Trash2, FileSpreadsheet, Clipboard, Check, Filter, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -49,6 +50,9 @@ export default function Products() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isAssignCountryOpen, setIsAssignCountryOpen] = useState(false);
 
+  // Country Filter
+  const [countryFilter, setCountryFilter] = useState<string>("all");
+
   // Delete Dialog State
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [idsToDelete, setIdsToDelete] = useState<string[]>([]);
@@ -69,10 +73,16 @@ export default function Products() {
   const [pasteContent, setPasteContent] = useState("");
   const [importPreview, setImportPreview] = useState<any[]>([]);
 
+  const filteredProducts = useMemo(() => {
+    if (countryFilter === "all") return products;
+    if (countryFilter === "unassigned") return products.filter(p => !p.countryIds || p.countryIds.length === 0);
+    return products.filter(p => p.countryIds && p.countryIds.includes(countryFilter));
+  }, [products, countryFilter]);
+
   // Bulk Selection Handlers
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(new Set(products.map(p => p.id)));
+      setSelectedIds(new Set(filteredProducts.map(p => p.id)));
     } else {
       setSelectedIds(new Set());
     }
@@ -102,7 +112,8 @@ export default function Products() {
       updateProduct(editingId, { ...data, sku: data.sku || "" });
       toast({ title: "Product updated" });
     } else {
-      addProduct({ ...data, sku: data.sku || "", countryIds: [] });
+      const assignCountryIds = countryFilter !== "all" && countryFilter !== "unassigned" ? [countryFilter] : [];
+      addProduct({ ...data, sku: data.sku || "", countryIds: assignCountryIds });
       toast({ title: "Product added" });
     }
     setIsAddOpen(false);
@@ -243,19 +254,22 @@ export default function Products() {
   };
 
   const commitImport = () => {
+    const assignCountryIds = countryFilter !== "all" && countryFilter !== "unassigned" ? [countryFilter] : [];
+    const countryName = assignCountryIds.length > 0 ? countries.find(c => c.id === assignCountryIds[0])?.name : null;
     const newProducts = importPreview.map(p => ({
       sku: p.sku,
       name: p.name,
       status: 'Draft' as const,
       cost: 0,
       price: 0,
-      countryIds: [] as string[]
+      countryIds: assignCountryIds
     }));
     addProducts(newProducts);
     setIsImportOpen(false);
     setImportPreview([]);
     setPasteContent("");
-    toast({ title: `Imported ${newProducts.length} products` });
+    const msg = countryName ? `Imported ${newProducts.length} products → ${countryName}` : `Imported ${newProducts.length} products`;
+    toast({ title: msg });
   };
 
   return (
@@ -266,7 +280,21 @@ export default function Products() {
             <h2 className="text-3xl font-bold tracking-tight">Products</h2>
             <p className="text-muted-foreground">Manage your product catalog.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <Select value={countryFilter} onValueChange={setCountryFilter}>
+              <SelectTrigger className="w-[180px]" data-testid="select-country-filter">
+                <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="All Countries" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Countries</SelectItem>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {countries.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="gap-2">
@@ -278,6 +306,11 @@ export default function Products() {
                   <DialogTitle>Import Products</DialogTitle>
                   <DialogDescription>
                     Copy/paste from Excel or upload a CSV. Defaults: Draft, Cost 0, Price 0.
+                    {countryFilter !== "all" && countryFilter !== "unassigned" && (
+                      <span className="block mt-1 font-medium text-primary">
+                        Products will be assigned to: {countries.find(c => c.id === countryFilter)?.name}
+                      </span>
+                    )}
                   </DialogDescription>
                 </DialogHeader>
                 <Tabs defaultValue="paste">
@@ -484,7 +517,7 @@ export default function Products() {
             <TableRow>
               <TableHead className="w-[50px]">
                 <Checkbox 
-                  checked={products.length > 0 && selectedIds.size === products.length}
+                  checked={filteredProducts.length > 0 && selectedIds.size === filteredProducts.length}
                   onCheckedChange={(c) => handleSelectAll(!!c)}
                 />
               </TableHead>
@@ -497,14 +530,14 @@ export default function Products() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.length === 0 ? (
+            {filteredProducts.length === 0 ? (
                <TableRow>
                  <TableCell colSpan={7} className="h-24 text-center">
                    No products found.
                  </TableCell>
                </TableRow>
             ) : (
-              products.map((product) => (
+              filteredProducts.map((product) => (
                 <TableRow key={product.id} className="group">
                   <TableCell>
                     <Checkbox 
