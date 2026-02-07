@@ -34,6 +34,7 @@ interface AdminUser {
   id: number;
   username: string;
   role: string;
+  email: string | null;
 }
 
 export default function AdminPanel() {
@@ -46,6 +47,7 @@ export default function AdminPanel() {
   const [resetPasswordUserId, setResetPasswordUserId] = useState<number | null>(null);
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [newRole, setNewRole] = useState("user");
   const [creating, setCreating] = useState(false);
   const [resetPassword, setResetPassword] = useState("");
@@ -76,6 +78,7 @@ export default function AdminPanel() {
         username: newUsername,
         password: newPassword,
         role: newRole,
+        email: newEmail || undefined,
       });
       if (!res.ok) {
         const msg = await res.text();
@@ -84,6 +87,7 @@ export default function AdminPanel() {
       toast({ title: "Account created", description: `User "${newUsername}" created successfully.` });
       setNewUsername("");
       setNewPassword("");
+      setNewEmail("");
       setNewRole("user");
       setCreateOpen(false);
       fetchUsers();
@@ -173,6 +177,17 @@ export default function AdminPanel() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter email (optional)"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  data-testid="input-new-email"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
@@ -255,6 +270,7 @@ export default function AdminPanel() {
                 <TableRow>
                   <TableHead className="w-[60px]">ID</TableHead>
                   <TableHead>Username</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead className="w-[150px]">Role</TableHead>
                   <TableHead className="w-[150px] text-right">Actions</TableHead>
                 </TableRow>
@@ -262,7 +278,7 @@ export default function AdminPanel() {
               <TableBody>
                 {users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                       No users found.
                     </TableCell>
                   </TableRow>
@@ -275,6 +291,9 @@ export default function AdminPanel() {
                         {u.id === user?.id && (
                           <Badge variant="outline" className="ml-2 text-xs">You</Badge>
                         )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {u.email || "—"}
                       </TableCell>
                       <TableCell>
                         <Select

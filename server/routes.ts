@@ -153,13 +153,13 @@ export async function registerRoutes(
   // Admin Routes
   app.get("/api/admin/users", ensureAdmin, async (req, res) => {
     const allUsers = await storage.getAllUsers();
-    const safeUsers = allUsers.map(u => ({ id: u.id, username: u.username, role: u.role }));
+    const safeUsers = allUsers.map(u => ({ id: u.id, username: u.username, role: u.role, email: u.email }));
     res.json(safeUsers);
   });
 
   app.post("/api/admin/users", ensureAdmin, async (req, res, next) => {
     try {
-      const { username, password, role } = req.body;
+      const { username, password, role, email } = req.body;
       if (!username || !password) {
         return res.status(400).send("Username and password are required");
       }
@@ -170,10 +170,13 @@ export async function registerRoutes(
       const { hashPassword } = await import("./auth");
       const hashedPassword = await hashPassword(password);
       const user = await storage.createUser({ username, password: hashedPassword });
-      if (role && role !== 'user') {
-        await storage.updateUser(user.id, { role });
+      const updates: any = {};
+      if (role && role !== 'user') updates.role = role;
+      if (email) updates.email = email;
+      if (Object.keys(updates).length > 0) {
+        await storage.updateUser(user.id, updates);
       }
-      res.status(201).json({ id: user.id, username: user.username, role: role || 'user' });
+      res.status(201).json({ id: user.id, username: user.username, role: role || 'user', email: email || null });
     } catch (error) {
       next(error);
     }
@@ -196,15 +199,16 @@ export async function registerRoutes(
   app.put("/api/admin/users/:id", ensureAdmin, async (req, res, next) => {
     try {
       const userId = parseInt(req.params.id);
-      const { role, password } = req.body;
+      const { role, password, email } = req.body;
       const updates: any = {};
       if (role) updates.role = role;
       if (password) {
         const { hashPassword } = await import("./auth");
         updates.password = await hashPassword(password);
       }
+      if (email !== undefined) updates.email = email;
       const updated = await storage.updateUser(userId, updates);
-      res.json({ id: updated.id, username: updated.username, role: updated.role });
+      res.json({ id: updated.id, username: updated.username, role: updated.role, email: updated.email });
     } catch (error) {
       next(error);
     }

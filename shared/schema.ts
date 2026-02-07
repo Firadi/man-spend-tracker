@@ -7,6 +7,7 @@ export const users = pgTable("users", {
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   role: text("role").notNull().default("user"),
+  email: text("email"),
 });
 
 export const countries = pgTable("countries", {
