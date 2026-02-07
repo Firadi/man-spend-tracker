@@ -345,15 +345,16 @@ export default function Analyse() {
       if (dailyTotal !== undefined && dailyTotal > 0) return dailyTotal;
     }
 
-    const override = analysis[activeCountryId]?.[productId]?.[field];
-    if (override !== undefined) return override;
-    
-    // Defaults
     if (field === 'serviceFees' && activeCountry) {
+      const manualValue = analysis[activeCountryId]?.[productId]?.[field];
+      if (manualValue !== undefined && manualValue > 0) return manualValue;
       const delivered = getAnalysisValue(productId, 'deliveredOrders');
       const feePerOrder = activeCountry.defaultShipping + activeCountry.defaultCod + activeCountry.defaultReturn;
       return delivered * feePerOrder;
     }
+
+    const override = analysis[activeCountryId]?.[productId]?.[field];
+    if (override !== undefined) return override;
     return 0;
   };
 
