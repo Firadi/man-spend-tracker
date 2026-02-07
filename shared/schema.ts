@@ -54,6 +54,14 @@ export const simulations = pgTable("simulations", {
   results: jsonb("results").notNull(),
 });
 
+export const dailyAds = pgTable("daily_ads", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  productId: text("product_id").notNull(),
+  date: text("date").notNull(),
+  amount: real("amount").default(0).notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -76,15 +84,22 @@ export const insertSimulationSchema = createInsertSchema(simulations).omit({
   userId: true 
 });
 
+export const insertDailyAdSchema = createInsertSchema(dailyAds).omit({
+  id: true,
+  userId: true
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertCountry = z.infer<typeof insertCountrySchema>;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type InsertAnalysis = z.infer<typeof insertAnalysisSchema>;
 export type InsertSimulation = z.infer<typeof insertSimulationSchema>;
+export type InsertDailyAd = z.infer<typeof insertDailyAdSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Country = typeof countries.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Analysis = typeof analysis.$inferSelect;
 export type Simulation = typeof simulations.$inferSelect;
+export type DailyAd = typeof dailyAds.$inferSelect;
 

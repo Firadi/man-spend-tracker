@@ -25,6 +25,12 @@ export interface Product {
   countryIds: string[];
 }
 
+export interface DailyAdEntry {
+  productId: string;
+  date: string;
+  amount: number;
+}
+
 export interface AnalysisOverride {
   revenue?: number;
   ads?: number;
@@ -88,6 +94,10 @@ interface AppState {
   saveSimulation: (simulation: Omit<SimulationData, 'id' | 'date'>) => Promise<void>;
   deleteSimulation: (id: string) => Promise<void>;
 
+  dailyAds: DailyAdEntry[];
+  fetchDailyAds: (startDate: string, endDate: string) => Promise<void>;
+  saveDailyAds: (entries: DailyAdEntry[]) => Promise<void>;
+
   columnOrder: string[];
   setColumnOrder: (order: string[]) => void;
 
@@ -102,6 +112,7 @@ export const useStore = create<AppState>((set, get) => ({
       products: [],
       analysis: {},
       simulations: [],
+      dailyAds: [],
       columnOrder: [
         'product', 
         'totalOrders', 
@@ -241,6 +252,33 @@ export const useStore = create<AppState>((set, get) => ({
               }
             }
           };
+        });
+      },
+
+      fetchDailyAds: async (startDate: string, endDate: string) => {
+        try {
+          const res = await apiRequest("GET", `/api/daily-ads?startDate=${startDate}&endDate=${endDate}`);
+          const data = await res.json();
+          set({ dailyAds: data.map((d: any) => ({ productId: d.productId, date: d.date, amount: d.amount })) });
+        } catch (error) {
+          console.error("Failed to fetch daily ads:", error);
+        }
+      },
+
+      saveDailyAds: async (entries: DailyAdEntry[]) => {
+        const res = await apiRequest("POST", "/api/daily-ads", entries);
+        const saved = await res.json();
+        set((state) => {
+          const updated = [...state.dailyAds];
+          for (const entry of entries) {
+            const idx = updated.findIndex(d => d.productId === entry.productId && d.date === entry.date);
+            if (idx >= 0) {
+              updated[idx] = entry;
+            } else {
+              updated.push(entry);
+            }
+          }
+          return { dailyAds: updated };
         });
       },
 

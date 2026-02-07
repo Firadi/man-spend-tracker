@@ -26,6 +26,7 @@ Preferred communication style: Simple, everyday language.
 
 - **Dashboard** (`/`) — Overview with KPI summary cards, filterable by country
 - **Analyse** (`/analyse`) — Spreadsheet-like analysis table with draggable columns, export options (Excel, PDF, image)
+- **Daily Ads** (`/daily-ads`) — Daily Facebook Ads spend tracker per product with date range filters
 - **Simulation** (`/simulation`) — COD profitability simulator with input parameters and calculated results, save/history feature
 - **Products** (`/products`) — CRUD for products with CSV import, bulk operations, country assignment
 - **Countries** (`/countries`) — CRUD for countries with shipping/COD/return defaults
@@ -50,6 +51,8 @@ Preferred communication style: Simple, everyday language.
 - `PUT /api/analysis` — Update analysis entry (by countryId + productId)
 - `GET/POST /api/simulations` — List/create simulations
 - `DELETE /api/simulations/:id` — Delete simulation
+- `GET /api/daily-ads?startDate=&endDate=` — Get daily ads (filtered by date range)
+- `POST /api/daily-ads` — Bulk save daily ads entries
 - `POST /api/register`, `POST /api/login`, `POST /api/logout`, `GET /api/user` — Auth endpoints
 
 ### Data Storage
@@ -66,6 +69,7 @@ Preferred communication style: Simple, everyday language.
 - **countries** — `id` (text PK), `userId` (FK→users), `name`, `currency`, `code`, `defaultShipping`, `defaultCod`, `defaultReturn`
 - **products** — `id` (text PK), `userId` (FK→users), `sku`, `name`, `status`, `cost`, `price`, `image`, `countryIds` (jsonb array)
 - **analysis** — `id` (serial PK), `userId` (FK→users), `countryId`, `productId`, revenue/ads/fees/orders fields
+- **daily_ads** — `id` (serial PK), `userId` (FK→users), `productId`, `date` (YYYY-MM-DD), `amount` (daily ads spend)
 - **simulations** — `id` (text PK), `userId` (FK→users), plus simulation input/output data
 
 ### Key Design Decisions
@@ -83,4 +87,5 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- **2026-02-07**: Added Daily Ads Tracker page for logging daily Facebook Ads spend per product. New `daily_ads` table, API routes (GET/POST /api/daily-ads), date range filters (this week/last week/this month/last month/custom), debounced inputs, save all functionality.
 - **2026-02-06**: Converted from mockup/prototype to full-stack application. Database provisioned, db driver switched from `@neondatabase/serverless` to `pg` (node-postgres), frontend reconnected to real backend API endpoints. Auth uses Passport.js with session-based authentication, all data persisted in PostgreSQL via Drizzle ORM.

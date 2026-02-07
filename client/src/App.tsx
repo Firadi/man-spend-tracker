@@ -10,6 +10,7 @@ import Analyse from "@/pages/Analyse";
 import Simulation from "@/pages/Simulation";
 import Products from "@/pages/Products";
 import Countries from "@/pages/Countries";
+import DailyAdsTracker from "@/pages/DailyAdsTracker";
 import AuthPage from "@/pages/AuthPage";
 import { useStore } from "@/lib/store";
 import { useEffect } from "react";
@@ -51,6 +52,7 @@ function AppContent() {
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/analyse" component={Analyse} />
+        <Route path="/daily-ads" component={DailyAdsTracker} />
         <Route path="/simulation" component={Simulation} />
         <Route path="/products" component={Products} />
         <Route path="/countries" component={Countries} />

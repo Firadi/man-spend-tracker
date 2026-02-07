@@ -1,8 +1,8 @@
-import { type User, type InsertUser, type Country, type InsertCountry, type Product, type InsertProduct, type Analysis, type Simulation, type InsertSimulation, users, countries, products, analysis, simulations } from "@shared/schema";
+import { type User, type InsertUser, type Country, type InsertCountry, type Product, type InsertProduct, type Analysis, type Simulation, type InsertSimulation, type DailyAd, type InsertDailyAd, users, countries, products, analysis, simulations, dailyAds } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { db, pool } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lte } from "drizzle-orm";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -31,6 +31,10 @@ export interface IStorage {
   getSimulations(userId: number): Promise<Simulation[]>;
   createSimulation(userId: number, simulation: InsertSimulation): Promise<Simulation>;
   deleteSimulation(userId: number, id: string): Promise<void>;
+
+  // Daily Ads
+  getDailyAds(userId: number, startDate?: string, endDate?: string): Promise<DailyAd[]>;
+  saveDailyAds(userId: number, entries: InsertDailyAd[]): Promise<DailyAd[]>;
 
   sessionStore: session.Store;
 }
@@ -164,6 +168,41 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSimulation(userId: number, id: string): Promise<void> {
     await db.delete(simulations).where(and(eq(simulations.id, id), eq(simulations.userId, userId)));
+  }
+
+  async getDailyAds(userId: number, startDate?: string, endDate?: string): Promise<DailyAd[]> {
+    const conditions = [eq(dailyAds.userId, userId)];
+    if (startDate) conditions.push(gte(dailyAds.date, startDate));
+    if (endDate) conditions.push(lte(dailyAds.date, endDate));
+    return await db.select().from(dailyAds).where(and(...conditions));
+  }
+
+  async saveDailyAds(userId: number, entries: InsertDailyAd[]): Promise<DailyAd[]> {
+    const results: DailyAd[] = [];
+    for (const entry of entries) {
+      const existing = await db.select().from(dailyAds).where(
+        and(
+          eq(dailyAds.userId, userId),
+          eq(dailyAds.productId, entry.productId),
+          eq(dailyAds.date, entry.date)
+        )
+      );
+      if (existing.length > 0) {
+        const [updated] = await db
+          .update(dailyAds)
+          .set({ amount: entry.amount })
+          .where(eq(dailyAds.id, existing[0].id))
+          .returning();
+        results.push(updated);
+      } else {
+        const [created] = await db
+          .insert(dailyAds)
+          .values({ ...entry, userId })
+          .returning();
+        results.push(created);
+      }
+    }
+    return results;
   }
 }
 

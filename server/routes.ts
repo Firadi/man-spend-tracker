@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertCountrySchema, insertProductSchema, insertAnalysisSchema, insertSimulationSchema } from "@shared/schema";
+import { insertCountrySchema, insertProductSchema, insertAnalysisSchema, insertSimulationSchema, insertDailyAdSchema } from "@shared/schema";
 import { z } from "zod";
 
 function ensureAuthenticated(req: any, res: any, next: any) {
@@ -112,6 +112,25 @@ export async function registerRoutes(
     const user = req.user as any;
     await storage.deleteSimulation(user.id, req.params.id);
     res.sendStatus(204);
+  });
+
+  // Daily Ads
+  app.get("/api/daily-ads", ensureAuthenticated, async (req, res) => {
+    const user = req.user as any;
+    const { startDate, endDate } = req.query;
+    const ads = await storage.getDailyAds(
+      user.id,
+      startDate as string | undefined,
+      endDate as string | undefined
+    );
+    res.json(ads);
+  });
+
+  app.post("/api/daily-ads", ensureAuthenticated, async (req, res) => {
+    const user = req.user as any;
+    const entries = z.array(insertDailyAdSchema).parse(req.body);
+    const saved = await storage.saveDailyAds(user.id, entries);
+    res.json(saved);
   });
 
   return httpServer;
