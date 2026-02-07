@@ -12,6 +12,13 @@ function ensureAuthenticated(req: any, res: any, next: any) {
   res.status(401).send("Unauthorized");
 }
 
+function ensureAdmin(req: any, res: any, next: any) {
+  if (req.isAuthenticated() && (req.user as any).role === 'admin') {
+    return next();
+  }
+  res.status(403).send("Forbidden");
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -141,6 +148,66 @@ export async function registerRoutes(
     const entries = z.array(insertDailyAdSchema).parse(req.body);
     const saved = await storage.saveDailyAds(user.id, entries);
     res.json(saved);
+  });
+
+  // Admin Routes
+  app.get("/api/admin/users", ensureAdmin, async (req, res) => {
+    const allUsers = await storage.getAllUsers();
+    const safeUsers = allUsers.map(u => ({ id: u.id, username: u.username, role: u.role }));
+    res.json(safeUsers);
+  });
+
+  app.post("/api/admin/users", ensureAdmin, async (req, res, next) => {
+    try {
+      const { username, password, role } = req.body;
+      if (!username || !password) {
+        return res.status(400).send("Username and password are required");
+      }
+      const existing = await storage.getUserByUsername(username);
+      if (existing) {
+        return res.status(400).send("Username already exists");
+      }
+      const { hashPassword } = await import("./auth");
+      const hashedPassword = await hashPassword(password);
+      const user = await storage.createUser({ username, password: hashedPassword });
+      if (role && role !== 'user') {
+        await storage.updateUser(user.id, { role });
+      }
+      res.status(201).json({ id: user.id, username: user.username, role: role || 'user' });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete("/api/admin/users/:id", ensureAdmin, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const adminUser = req.user as any;
+      if (userId === adminUser.id) {
+        return res.status(400).send("Cannot delete your own account");
+      }
+      await storage.deleteUser(userId);
+      res.sendStatus(204);
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put("/api/admin/users/:id", ensureAdmin, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { role, password } = req.body;
+      const updates: any = {};
+      if (role) updates.role = role;
+      if (password) {
+        const { hashPassword } = await import("./auth");
+        updates.password = await hashPassword(password);
+      }
+      const updated = await storage.updateUser(userId, updates);
+      res.json({ id: updated.id, username: updated.username, role: updated.role });
+    } catch (error) {
+      next(error);
+    }
   });
 
   return httpServer;

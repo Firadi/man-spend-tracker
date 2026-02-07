@@ -6,15 +6,13 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { insertUserSchema } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 
 export default function AuthPage() {
-  console.log("AuthPage mounting");
-  const { user, loginMutation, registerMutation, isLoading } = useAuth();
+  const { user, loginMutation, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -28,11 +26,6 @@ export default function AuthPage() {
     defaultValues: { username: "", password: "" },
   });
 
-  const registerForm = useForm<z.infer<typeof insertUserSchema>>({
-    resolver: zodResolver(insertUserSchema),
-    defaultValues: { username: "", password: "" },
-  });
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -42,7 +35,7 @@ export default function AuthPage() {
   }
 
   if (user) {
-    return null; // Will redirect
+    return null;
   }
 
   return (
@@ -59,98 +52,51 @@ export default function AuthPage() {
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-xs space-y-6">
              <div className="text-center">
-                <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
+                <h1 className="text-2xl font-bold tracking-tight" data-testid="text-login-title">Welcome back</h1>
                 <p className="text-sm text-muted-foreground">Login to your account</p>
              </div>
 
-             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="login">
-                <Card className="border-0 shadow-none">
-                  <CardContent className="p-0 space-y-4">
-                    <Form {...loginForm}>
-                      <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
-                        <FormField
-                          control={loginForm.control}
-                          name="username"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Username</FormLabel>
-                              <FormControl>
-                                <Input placeholder="admin" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={loginForm.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Password</FormLabel>
-                              <FormControl>
-                                <Input type="password" placeholder="admin" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-                          {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Sign In
-                        </Button>
-                      </form>
-                    </Form>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="register">
-                <Card className="border-0 shadow-none">
-                  <CardContent className="p-0 space-y-4">
-                    <Form {...registerForm}>
-                      <form onSubmit={registerForm.handleSubmit((data) => registerMutation.mutate(data))} className="space-y-4">
-                        <FormField
-                          control={registerForm.control}
-                          name="username"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Username</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Choose a username" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={registerForm.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Password</FormLabel>
-                              <FormControl>
-                                <Input type="password" placeholder="Choose a password" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-                          {registerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Create Account
-                        </Button>
-                      </form>
-                    </Form>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
+             <Card className="border-0 shadow-none">
+               <CardContent className="p-0 space-y-4">
+                 <Form {...loginForm}>
+                   <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
+                     <FormField
+                       control={loginForm.control}
+                       name="username"
+                       render={({ field }) => (
+                         <FormItem>
+                           <FormLabel>Username</FormLabel>
+                           <FormControl>
+                             <Input placeholder="Enter your username" {...field} data-testid="input-login-username" />
+                           </FormControl>
+                           <FormMessage />
+                         </FormItem>
+                       )}
+                     />
+                     <FormField
+                       control={loginForm.control}
+                       name="password"
+                       render={({ field }) => (
+                         <FormItem>
+                           <FormLabel>Password</FormLabel>
+                           <FormControl>
+                             <Input type="password" placeholder="Enter your password" {...field} data-testid="input-login-password" />
+                           </FormControl>
+                           <FormMessage />
+                         </FormItem>
+                       )}
+                     />
+                     <Button type="submit" className="w-full" disabled={loginMutation.isPending} data-testid="button-login">
+                       {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                       Sign In
+                     </Button>
+                   </form>
+                 </Form>
+                 <p className="text-xs text-center text-muted-foreground">
+                   Contact your admin to get an account.
+                 </p>
+               </CardContent>
+             </Card>
           </div>
         </div>
       </div>

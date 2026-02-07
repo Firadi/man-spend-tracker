@@ -9,7 +9,7 @@ import { User } from "@shared/schema";
 
 const scryptAsync = promisify(scrypt);
 
-async function hashPassword(password: string) {
+export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
   return `${buf.toString("hex")}.${salt}`;
@@ -63,30 +63,13 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/register", async (req, res, next) => {
-    try {
-      const existingUser = await storage.getUserByUsername(req.body.username);
-      if (existingUser) {
-        return res.status(400).send("Username already exists");
-      }
-
-      const hashedPassword = await hashPassword(req.body.password);
-      const user = await storage.createUser({
-        ...req.body,
-        password: hashedPassword,
-      });
-
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.status(201).json(user);
-      });
-    } catch (error) {
-      next(error);
-    }
+  app.post("/api/register", (req, res) => {
+    res.status(403).send("Registration is disabled. Contact admin to create an account.");
   });
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+    const u = req.user as User;
+    res.status(200).json({ id: u.id, username: u.username, role: u.role });
   });
 
   app.post("/api/logout", (req, res, next) => {
@@ -100,6 +83,7 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated()) {
       return res.sendStatus(401);
     }
-    res.json(req.user);
+    const u = req.user as User;
+    res.json({ id: u.id, username: u.username, role: u.role });
   });
 }
