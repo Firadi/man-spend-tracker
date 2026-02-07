@@ -10,6 +10,9 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  getAllUsers(): Promise<User[]>;
+  deleteUser(id: number): Promise<void>;
+  updateUser(id: number, data: Partial<User>): Promise<User>;
 
   // Countries
   getCountries(userId: number): Promise<Country[]>;
@@ -63,6 +66,25 @@ export class DatabaseStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(dailyAds).where(eq(dailyAds.userId, id));
+    await db.delete(analysis).where(eq(analysis.userId, id));
+    await db.delete(simulations).where(eq(simulations.userId, id));
+    await db.delete(products).where(eq(products.userId, id));
+    await db.delete(countries).where(eq(countries.userId, id));
+    await db.delete(users).where(eq(users.id, id));
+  }
+
+  async updateUser(id: number, data: Partial<User>): Promise<User> {
+    const [updated] = await db.update(users).set(data).where(eq(users.id, id)).returning();
+    if (!updated) throw new Error("User not found");
+    return updated;
   }
 
   async getCountries(userId: number): Promise<Country[]> {
