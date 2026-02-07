@@ -188,6 +188,11 @@ export default function DailyAdsTracker() {
     if (statusFilter !== "all") {
       filtered = filtered.filter(p => p.status === statusFilter);
     }
+    filtered.sort((a, b) => {
+      if (a.status === 'Active' && b.status !== 'Active') return -1;
+      if (a.status !== 'Active' && b.status === 'Active') return 1;
+      return 0;
+    });
     return filtered;
   }, [allProducts, searchQuery, statusFilter]);
 
