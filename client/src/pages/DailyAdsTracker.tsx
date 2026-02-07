@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Save, CalendarDays, Loader2, Search, DollarSign, TrendingUp, Package, Filter } from "lucide-react";
+import { Save, CalendarDays, Loader2, Search, DollarSign, TrendingUp, Package, Filter, FileDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { jsPDF } from 'jspdf';
 
 type DateFilter = "today" | "this_week" | "last_week" | "this_month" | "last_month" | "custom";
 
@@ -237,6 +238,96 @@ export default function DailyAdsTracker() {
     toast({ title: "Updated", description: `${ids.length} product(s) set to ${newStatus}.` });
   };
 
+  const handleToggleStatus = async (product: Product) => {
+    const newStatus = product.status === 'Active' ? 'Draft' : 'Active';
+    await updateProduct(product.id, { status: newStatus });
+    toast({ title: "Updated", description: `${product.name} set to ${newStatus}.` });
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.setFontSize(16);
+    doc.text('Daily Ads Spend Report', 14, 15);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Period: ${startStr} to ${endStr}`, 14, 22);
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 27);
+
+    const colWidths = [60, ...dates.map(() => 22), 25];
+    const totalTableWidth = colWidths.reduce((a, b) => a + b, 0);
+    const startX = Math.max(14, (pageWidth - totalTableWidth) / 2);
+    let y = 35;
+
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+    doc.setFillColor(41, 41, 41);
+    doc.rect(startX, y - 4, totalTableWidth, 7, 'F');
+    let x = startX;
+    doc.text('Product', x + 2, y);
+    x += colWidths[0];
+    dates.forEach((date, i) => {
+      doc.text(formatDateLabel(date), x + 2, y);
+      x += colWidths[i + 1];
+    });
+    doc.text('Total', x + 2, y);
+
+    y += 7;
+    doc.setTextColor(0);
+
+    filteredProducts.forEach((product, idx) => {
+      if (y > doc.internal.pageSize.getHeight() - 20) {
+        doc.addPage();
+        y = 15;
+      }
+      if (idx % 2 === 0) {
+        doc.setFillColor(245, 245, 245);
+        doc.rect(startX, y - 4, totalTableWidth, 6, 'F');
+      }
+      x = startX;
+      doc.setFontSize(7);
+      const name = product.name.length > 30 ? product.name.substring(0, 28) + '...' : product.name;
+      doc.text(name, x + 2, y);
+      x += colWidths[0];
+      dates.forEach((date, i) => {
+        const val = (localData[product.id] || {})[date] || 0;
+        doc.text(val > 0 ? `$${val.toFixed(2)}` : '-', x + 2, y);
+        x += colWidths[i + 1];
+      });
+      const total = getProductTotal(product.id);
+      doc.setFont('helvetica', 'bold');
+      doc.text(total > 0 ? `$${total.toFixed(2)}` : '-', x + 2, y);
+      doc.setFont('helvetica', 'normal');
+      y += 6;
+    });
+
+    y += 2;
+    doc.setFillColor(230, 230, 230);
+    doc.rect(startX, y - 4, totalTableWidth, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    x = startX;
+    doc.text('TOTALS', x + 2, y);
+    x += colWidths[0];
+    dates.forEach((date, i) => {
+      const dt = getDateTotal(date);
+      doc.text(dt > 0 ? `$${dt.toFixed(2)}` : '-', x + 2, y);
+      x += colWidths[i + 1];
+    });
+    doc.text(`$${grandTotal.toFixed(2)}`, x + 2, y);
+
+    y += 12;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`Total Spend: $${grandTotal.toFixed(2)}`, 14, y);
+    doc.text(`Avg. Daily: $${avgDaily.toFixed(2)}`, 14, y + 5);
+    doc.text(`Active Products: ${activeCount}`, 14, y + 10);
+
+    doc.save(`daily_ads_${startStr}_${endStr}.pdf`);
+    toast({ title: "Exported", description: "PDF downloaded successfully." });
+  };
+
   const getProductTotal = (productId: string): number => {
     const productData = localData[productId] || {};
     return dates.reduce((sum, d) => sum + (productData[d] || 0), 0);
@@ -299,6 +390,11 @@ export default function DailyAdsTracker() {
           <Button onClick={handleSaveAll} disabled={saving} data-testid="button-save-all">
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             Save All
+          </Button>
+
+          <Button variant="outline" onClick={handleExportPDF} data-testid="button-export-pdf">
+            <FileDown className="h-4 w-4 mr-2" />
+            Export PDF
           </Button>
         </div>
       </div>
@@ -438,7 +534,12 @@ export default function DailyAdsTracker() {
                             <div className="text-xs text-muted-foreground font-mono">{product.sku}</div>
                           </TableCell>
                           <TableCell className="sticky left-[220px] z-10 bg-card border-r text-center">
-                            <Badge variant={isDisabled ? "secondary" : "default"} className="text-xs">
+                            <Badge
+                              variant={isDisabled ? "secondary" : "default"}
+                              className="text-xs cursor-pointer hover:opacity-80"
+                              onClick={() => handleToggleStatus(product)}
+                              data-testid={`badge-status-${product.id}`}
+                            >
                               {product.status}
                             </Badge>
                           </TableCell>
