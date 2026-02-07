@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Save, CalendarDays, Loader2, Search, DollarSign, TrendingUp, Package, Filter, FileDown } from "lucide-react";
+import { Save, CalendarDays, Loader2, Search, DollarSign, TrendingUp, Package, Filter, FileDown, Globe } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { jsPDF } from 'jspdf';
 
@@ -127,7 +127,7 @@ function DebouncedCell({ value, onChange, disabled, testId }: { value: number; o
 }
 
 export default function DailyAdsTracker() {
-  const { products, fetchDailyAds, saveDailyAds, dailyAds, updateProduct } = useStore();
+  const { products, countries, fetchDailyAds, saveDailyAds, dailyAds, updateProduct } = useStore();
   const { toast } = useToast();
   const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [customStart, setCustomStart] = useState("");
@@ -138,6 +138,7 @@ export default function DailyAdsTracker() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "Active" | "Draft">("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [countryFilter, setCountryFilter] = useState<string>("all");
 
   const { start, end } = useMemo(
     () => getDateRange(dateFilter, customStart, customEnd),
@@ -167,8 +168,16 @@ export default function DailyAdsTracker() {
   }, [dailyAds]);
 
   const allProducts = useMemo(() => {
-    return products.filter(p => p.status === 'Active' || p.status === 'Draft');
-  }, [products]);
+    let filtered = products.filter(p => p.status === 'Active' || p.status === 'Draft');
+    if (countryFilter !== "all") {
+      if (countryFilter === "unassigned") {
+        filtered = filtered.filter(p => !p.countryIds || p.countryIds.length === 0);
+      } else {
+        filtered = filtered.filter(p => p.countryIds && p.countryIds.includes(countryFilter));
+      }
+    }
+    return filtered;
+  }, [products, countryFilter]);
 
   const filteredProducts = useMemo(() => {
     let filtered = allProducts;
@@ -450,6 +459,20 @@ export default function DailyAdsTracker() {
             data-testid="input-search-products"
           />
         </div>
+
+        <Select value={countryFilter} onValueChange={setCountryFilter}>
+          <SelectTrigger className="w-[180px]" data-testid="select-country-filter">
+            <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="All Countries" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Countries</SelectItem>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
+            {countries.map(c => (
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
