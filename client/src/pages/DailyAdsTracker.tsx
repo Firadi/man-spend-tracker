@@ -5,18 +5,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Save, CalendarDays, Loader2 } from "lucide-react";
+import { Save, CalendarDays, Loader2, Search, DollarSign, TrendingUp, Package, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
-type DateFilter = "this_week" | "last_week" | "this_month" | "last_month" | "custom";
+type DateFilter = "today" | "this_week" | "last_week" | "this_month" | "last_month" | "custom";
 
 function getDateRange(filter: DateFilter, customStart?: string, customEnd?: string): { start: Date; end: Date } {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   switch (filter) {
+    case "today": {
+      return { start: today, end: today };
+    }
     case "this_week": {
       const day = today.getDay();
       const diff = day === 0 ? 6 : day - 1;
@@ -120,14 +123,17 @@ function DebouncedCell({ value, onChange, disabled, testId }: { value: number; o
 }
 
 export default function DailyAdsTracker() {
-  const { products, fetchDailyAds, saveDailyAds, dailyAds } = useStore();
+  const { products, fetchDailyAds, saveDailyAds, dailyAds, updateProduct } = useStore();
   const { toast } = useToast();
-  const [dateFilter, setDateFilter] = useState<DateFilter>("this_week");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("today");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [localData, setLocalData] = useState<Record<string, Record<string, number>>>({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "Active" | "Draft">("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { start, end } = useMemo(
     () => getDateRange(dateFilter, customStart, customEnd),
@@ -156,9 +162,21 @@ export default function DailyAdsTracker() {
     setLocalData(map);
   }, [dailyAds]);
 
-  const activeProducts = useMemo(() => {
+  const allProducts = useMemo(() => {
     return products.filter(p => p.status === 'Active' || p.status === 'Draft');
   }, [products]);
+
+  const filteredProducts = useMemo(() => {
+    let filtered = allProducts;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(p => p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q));
+    }
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(p => p.status === statusFilter);
+    }
+    return filtered;
+  }, [allProducts, searchQuery, statusFilter]);
 
   const handleCellChange = useCallback((productId: string, date: string, amount: number) => {
     setLocalData(prev => ({
@@ -193,18 +211,46 @@ export default function DailyAdsTracker() {
     setSaving(false);
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredProducts.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredProducts.map(p => p.id)));
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatus: "Active" | "Draft") => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      await updateProduct(id, { status: newStatus });
+    }
+    setSelectedIds(new Set());
+    toast({ title: "Updated", description: `${ids.length} product(s) set to ${newStatus}.` });
+  };
+
   const getProductTotal = (productId: string): number => {
     const productData = localData[productId] || {};
-    return Object.values(productData).reduce((sum, v) => sum + (v || 0), 0);
+    return dates.reduce((sum, d) => sum + (productData[d] || 0), 0);
   };
 
   const getDateTotal = (date: string): number => {
-    return activeProducts.reduce((sum, p) => {
+    return filteredProducts.reduce((sum, p) => {
       return sum + ((localData[p.id] || {})[date] || 0);
     }, 0);
   };
 
-  const grandTotal = activeProducts.reduce((sum, p) => sum + getProductTotal(p.id), 0);
+  const grandTotal = filteredProducts.reduce((sum, p) => sum + getProductTotal(p.id), 0);
+  const activeCount = allProducts.filter(p => p.status === 'Active').length;
+  const avgDaily = dates.length > 0 ? grandTotal / dates.length : 0;
 
   return (
     <div className="space-y-6">
@@ -221,6 +267,7 @@ export default function DailyAdsTracker() {
               <SelectValue placeholder="Date Range" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
               <SelectItem value="this_week">This Week</SelectItem>
               <SelectItem value="last_week">Last Week</SelectItem>
               <SelectItem value="this_month">This Month</SelectItem>
@@ -256,6 +303,82 @@ export default function DailyAdsTracker() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <Card className="p-4" data-testid="card-total-spend">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-primary/10">
+              <DollarSign className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total Spend</p>
+              <p className="text-2xl font-bold">${grandTotal.toFixed(2)}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4" data-testid="card-avg-daily">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-blue-500/10">
+              <TrendingUp className="h-5 w-5 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Avg. Daily Spend</p>
+              <p className="text-2xl font-bold">${avgDaily.toFixed(2)}</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4" data-testid="card-active-products">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-green-500/10">
+              <Package className="h-5 w-5 text-green-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Active Products</p>
+              <p className="text-2xl font-bold">{activeCount}</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="relative w-full sm:w-[280px]">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Filter products..."
+            className="pl-8"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            data-testid="input-search-products"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as "all" | "Active" | "Draft")}>
+            <SelectTrigger className="w-[150px]" data-testid="select-status-filter">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="Active">Active Only</SelectItem>
+              <SelectItem value="Draft">Draft Only</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-sm text-muted-foreground">{selectedIds.size} selected</span>
+            <Button size="sm" variant="outline" onClick={() => handleBulkStatusChange("Active")} data-testid="button-set-active">
+              Set Active
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleBulkStatusChange("Draft")} data-testid="button-set-draft">
+              Set Draft
+            </Button>
+          </div>
+        )}
+      </div>
+
       <Card>
         <CardContent className="p-0">
           {loading ? (
@@ -267,10 +390,17 @@ export default function DailyAdsTracker() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="sticky left-0 z-20 bg-muted/95 backdrop-blur min-w-[180px] border-r" data-testid="header-product">
+                    <TableHead className="sticky left-0 z-20 bg-muted/95 backdrop-blur w-[40px] border-r px-2">
+                      <Checkbox
+                        checked={filteredProducts.length > 0 && selectedIds.size === filteredProducts.length}
+                        onCheckedChange={toggleSelectAll}
+                        data-testid="checkbox-select-all"
+                      />
+                    </TableHead>
+                    <TableHead className="sticky left-[40px] z-20 bg-muted/95 backdrop-blur min-w-[180px] border-r" data-testid="header-product">
                       Product
                     </TableHead>
-                    <TableHead className="sticky left-[180px] z-20 bg-muted/95 backdrop-blur w-[90px] border-r text-center" data-testid="header-status">
+                    <TableHead className="sticky left-[220px] z-20 bg-muted/95 backdrop-blur w-[90px] border-r text-center" data-testid="header-status">
                       Status
                     </TableHead>
                     {dates.map(date => (
@@ -284,23 +414,30 @@ export default function DailyAdsTracker() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {activeProducts.length === 0 ? (
+                  {filteredProducts.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={dates.length + 3} className="h-24 text-center text-muted-foreground">
-                        No products found. Add products first.
+                      <TableCell colSpan={dates.length + 4} className="h-24 text-center text-muted-foreground">
+                        No products found.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    activeProducts.map((product) => {
+                    filteredProducts.map((product) => {
                       const isDisabled = product.status === 'Draft';
                       const total = getProductTotal(product.id);
                       return (
                         <TableRow key={product.id} className={isDisabled ? "opacity-60" : ""} data-testid={`row-product-${product.id}`}>
-                          <TableCell className="sticky left-0 z-10 bg-card border-r font-medium">
+                          <TableCell className="sticky left-0 z-10 bg-card border-r px-2">
+                            <Checkbox
+                              checked={selectedIds.has(product.id)}
+                              onCheckedChange={() => toggleSelect(product.id)}
+                              data-testid={`checkbox-product-${product.id}`}
+                            />
+                          </TableCell>
+                          <TableCell className="sticky left-[40px] z-10 bg-card border-r font-medium">
                             <div>{product.name}</div>
                             <div className="text-xs text-muted-foreground font-mono">{product.sku}</div>
                           </TableCell>
-                          <TableCell className="sticky left-[180px] z-10 bg-card border-r text-center">
+                          <TableCell className="sticky left-[220px] z-10 bg-card border-r text-center">
                             <Badge variant={isDisabled ? "secondary" : "default"} className="text-xs">
                               {product.status}
                             </Badge>
@@ -322,12 +459,13 @@ export default function DailyAdsTracker() {
                       );
                     })
                   )}
-                  {activeProducts.length > 0 && (
+                  {filteredProducts.length > 0 && (
                     <TableRow className="bg-muted/30 font-bold border-t-2">
-                      <TableCell className="sticky left-0 z-10 bg-muted/30 border-r">
+                      <TableCell className="sticky left-0 z-10 bg-muted/30 border-r" />
+                      <TableCell className="sticky left-[40px] z-10 bg-muted/30 border-r">
                         Totals
                       </TableCell>
-                      <TableCell className="sticky left-[180px] z-10 bg-muted/30 border-r" />
+                      <TableCell className="sticky left-[220px] z-10 bg-muted/30 border-r" />
                       {dates.map(date => {
                         const dateTotal = getDateTotal(date);
                         return (
