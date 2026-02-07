@@ -1,10 +1,11 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, LineChart, Package, Globe, Settings, Menu, PanelLeft, PanelLeftClose, Calculator, Megaphone } from "lucide-react";
+import { LayoutDashboard, LineChart, Package, Globe, Settings, Menu, PanelLeft, PanelLeftClose, Calculator, Megaphone, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
+import { useAuth } from "@/hooks/use-auth";
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -19,6 +20,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const { sidebarCollapsed, toggleSidebar } = useStore();
+  const { user, logoutMutation } = useAuth();
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-sidebar border-r border-sidebar-border">
@@ -54,13 +56,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="p-4 border-t border-sidebar-border">
         <div className={cn("flex items-center gap-3", sidebarCollapsed && "justify-center")}>
           <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center shrink-0">
-            <span className="text-xs font-bold text-sidebar-accent-foreground">JD</span>
+            <span className="text-xs font-bold text-sidebar-accent-foreground">
+              {user?.username?.substring(0, 2).toUpperCase() || "??"}
+            </span>
           </div>
           {!sidebarCollapsed && (
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-sm font-medium text-sidebar-foreground truncate">John Doe</span>
-              <span className="text-xs text-sidebar-foreground/50 truncate">Admin</span>
-            </div>
+            <>
+              <div className="flex flex-col overflow-hidden flex-1">
+                <span className="text-sm font-medium text-sidebar-foreground truncate">{user?.username || "User"}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-sidebar-foreground/50 hover:text-red-500 shrink-0"
+                onClick={() => logoutMutation.mutate()}
+                disabled={logoutMutation.isPending}
+                title="Log out"
+                data-testid="button-logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </>
           )}
         </div>
       </div>
