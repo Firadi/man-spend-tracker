@@ -584,10 +584,10 @@ export default function Simulation() {
 
                     {/* CPA / CPD / TDC */}
                     <div className="grid grid-cols-3 gap-3">
-                        <div className="p-3 rounded-xl bg-muted/10 border border-muted/20 text-center">
-                          <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider mb-1">CPD</p>
-                          <p className="text-lg font-bold font-mono">{formatCurrency(results.cpd, 'USD')}</p>
-                          <p className="text-[9px] text-muted-foreground font-mono mt-0.5">Cost / Delivered</p>
+                        <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 text-center">
+                          <p className="text-blue-500 text-[10px] uppercase font-bold tracking-wider mb-1">CPD</p>
+                          <p className="text-lg font-bold font-mono text-blue-500">{formatCurrency(results.tdc, 'USD')}</p>
+                          <p className="text-[9px] text-muted-foreground font-mono mt-0.5">Total Delivery Cost</p>
                         </div>
                         <div className="p-3 rounded-xl bg-muted/10 border border-muted/20 text-center">
                           <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider mb-1">CPA</p>
