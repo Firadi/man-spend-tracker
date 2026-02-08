@@ -169,6 +169,13 @@ export default function AnalysisHistory() {
     const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     switch (chartDateFilter) {
+      case "today": {
+        return { start: fmt(today), end: fmt(today) };
+      }
+      case "all": {
+        const start = new Date(2020, 0, 1);
+        return { start: fmt(start), end: fmt(today) };
+      }
       case "thisWeek": {
         const day = today.getDay();
         const start = new Date(today);
@@ -764,7 +771,9 @@ export default function AnalysisHistory() {
                   <SelectValue placeholder="Last 30 days" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="last30">Last 30 days</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="thisWeek">This Week</SelectItem>
                   <SelectItem value="lastWeek">Last Week</SelectItem>
                   <SelectItem value="thisMonth">This Month</SelectItem>
