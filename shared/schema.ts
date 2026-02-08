@@ -42,6 +42,7 @@ export const analysis = pgTable("analysis", {
   ads: real("ads").default(0),
   serviceFees: real("service_fees").default(0),
   productFees: real("product_fees").default(0),
+  quantityDelivery: real("quantity_delivery").default(0),
   deliveredOrders: real("delivered_orders").default(0),
   totalOrders: real("total_orders").default(0),
   ordersConfirmed: real("orders_confirmed").default(0),
