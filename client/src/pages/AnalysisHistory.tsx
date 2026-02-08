@@ -771,9 +771,9 @@ export default function AnalysisHistory() {
                   <SelectValue placeholder="Last 30 days" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="last30">Last 30 days</SelectItem>
-                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="thisWeek">This Week</SelectItem>
                   <SelectItem value="lastWeek">Last Week</SelectItem>
                   <SelectItem value="thisMonth">This Month</SelectItem>
