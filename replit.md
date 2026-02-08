@@ -87,6 +87,8 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- **2026-02-08**: Swapped Dashboard and History pages. Analysis History page is now the main Dashboard at `/`. Old Dashboard page removed from routes. Sidebar nav updated accordingly. Product edit dialog now includes country assignment checkboxes.
+
 - **2026-02-07**: Added SaaS admin functionality. Users table now has `role` field (admin/user). Admin panel page at `/admin` allows managing user accounts (create, delete, reset password, change role). Public registration disabled — only admin can create accounts. Admin API routes protected by `ensureAdmin` middleware. Password hashes no longer exposed in API responses. Login page simplified (no register tab). Admin credentials: username `admin`, password `admin123`.
 - **2026-02-07**: Added Daily Ads Tracker page for logging daily Facebook Ads spend per product. New `daily_ads` table, API routes (GET/POST /api/daily-ads), date range filters (this week/last week/this month/last month/custom), debounced inputs, save all functionality.
 - **2026-02-06**: Converted from mockup/prototype to full-stack application. Database provisioned, db driver switched from `@neondatabase/serverless` to `pg` (node-postgres), frontend reconnected to real backend API endpoints. Auth uses Passport.js with session-based authentication, all data persisted in PostgreSQL via Drizzle ORM.
