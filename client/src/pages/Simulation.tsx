@@ -582,6 +582,25 @@ export default function Simulation() {
                         </div>
                     </div>
 
+                    {/* CPA / CPD / TDC */}
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="p-3 rounded-xl bg-muted/10 border border-muted/20 text-center">
+                          <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider mb-1">CPD</p>
+                          <p className="text-lg font-bold font-mono">{formatCurrency(results.cpd, 'USD')}</p>
+                          <p className="text-[9px] text-muted-foreground font-mono mt-0.5">Cost / Delivered</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-muted/10 border border-muted/20 text-center">
+                          <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider mb-1">CPA</p>
+                          <p className="text-lg font-bold font-mono">{formatCurrency(results.cpa, 'USD')}</p>
+                          <p className="text-[9px] text-muted-foreground font-mono mt-0.5">Ads / Order</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-muted/10 border border-muted/20 text-center">
+                          <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider mb-1">CPAD</p>
+                          <p className="text-lg font-bold font-mono">{formatCurrency(results.cpaDelivered, 'USD')}</p>
+                          <p className="text-[9px] text-muted-foreground font-mono mt-0.5">Ads / Delivered</p>
+                        </div>
+                    </div>
+
                     {/* Profit Highlight */}
                     <div className={`p-6 rounded-xl border-2 transition-all duration-500 ${results.totalProfit > 0 ? 'bg-green-500/10 border-green-500/20 shadow-[0_0_30px_-10px_rgba(34,197,94,0.2)]' : 'bg-red-500/10 border-red-500/20'}`}>
                         <div className="flex flex-col md:flex-row justify-between items-end gap-4">
