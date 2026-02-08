@@ -286,7 +286,7 @@ export default function Simulation() {
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">Enter your campaign metrics below.</p>
               </CardHeader>
-              <CardContent className="space-y-6 pt-6 flex-1">
+              <CardContent className="space-y-6 pt-6 flex-1" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
                   <div className="space-y-2 col-span-2 md:col-span-1">
                     <Label htmlFor="totalOrders" className="text-foreground font-medium text-xs uppercase tracking-wide">Total Orders</Label>
