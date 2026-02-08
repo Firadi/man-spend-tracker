@@ -211,20 +211,18 @@ export default function AnalysisHistory() {
           <p className="text-muted-foreground">Saved analysis snapshots for different periods.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {availableCountries.length > 1 && (
-            <Select value={countryFilter} onValueChange={setCountryFilter}>
-              <SelectTrigger className="w-[180px]" data-testid="select-country-filter">
-                <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="All Countries" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Countries</SelectItem>
-                {availableCountries.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <Select value={countryFilter} onValueChange={setCountryFilter}>
+            <SelectTrigger className="w-[180px]" data-testid="select-country-filter">
+              <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="All Countries" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Countries</SelectItem>
+              {availableCountries.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="relative w-full sm:w-[250px]">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
