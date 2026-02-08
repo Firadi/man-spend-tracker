@@ -522,85 +522,78 @@ export default function Simulation() {
                       </div>
                     </div>
 
-                    {/* Orders + Revenue + Costs */}
-                    <div className="rounded-2xl border border-muted/20 bg-gradient-to-b from-muted/10 to-muted/5 p-5 space-y-5">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                              <CheckCircle className="w-3.5 h-3.5 text-blue-500" />
-                            </div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Confirmed</p>
+                    {/* Confirmed & Delivered - big and prominent */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-8 h-8 rounded-xl bg-blue-500/15 flex items-center justify-center">
+                            <CheckCircle className="w-4 h-4 text-blue-500" />
                           </div>
-                          <div className="flex items-baseline gap-3">
-                            <Input
-                              type="number"
-                              value={results.confirmedOrders || ''}
-                              min={0}
-                              max={inputs.totalOrders}
-                              onChange={(e) => {
-                                let val = parseFloat(e.target.value) || 0;
-                                if (val > inputs.totalOrders) val = inputs.totalOrders;
-                                if (val < 0) val = 0;
-                                const newRate = inputs.totalOrders > 0 ? parseFloat(((val / inputs.totalOrders) * 100).toFixed(2)) : 0;
-                                const newDelivered = (val * inputs.deliveryRate) / 100;
-                                setInputs(prev => ({ ...prev, confirmationRate: newRate }));
-                                setResults(prev => prev ? { ...prev, confirmedOrders: val, deliveredOrders: newDelivered } : prev);
-                              }}
-                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
-                              className="text-4xl font-black tabular-nums bg-transparent border-none p-0 h-auto w-28 focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              data-testid="input-confirmed-orders"
-                            />
-                            <span className="text-sm font-bold text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-lg">{inputs.confirmationRate}%</span>
-                          </div>
+                          <p className="text-sm text-blue-400 uppercase tracking-wider font-bold">Confirmed</p>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                              <Truck className="w-3.5 h-3.5 text-purple-500" />
-                            </div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Delivered</p>
-                          </div>
-                          <div className="flex items-baseline gap-3">
-                            <Input
-                              type="number"
-                              value={results.deliveredOrders || ''}
-                              min={0}
-                              max={results.confirmedOrders}
-                              onChange={(e) => {
-                                let val = parseFloat(e.target.value) || 0;
-                                if (val > results.confirmedOrders) val = results.confirmedOrders;
-                                if (val < 0) val = 0;
-                                const newRate = results.confirmedOrders > 0 ? parseFloat(((val / results.confirmedOrders) * 100).toFixed(2)) : 0;
-                                setInputs(prev => ({ ...prev, deliveryRate: newRate }));
-                                setResults(prev => prev ? { ...prev, deliveredOrders: val } : prev);
-                              }}
-                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
-                              className="text-4xl font-black tabular-nums bg-transparent border-none p-0 h-auto w-28 focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              data-testid="input-delivered-orders"
-                            />
-                            <span className="text-sm font-bold text-purple-500 bg-purple-500/10 px-2.5 py-1 rounded-lg">{inputs.deliveryRate}%</span>
-                          </div>
-                        </div>
+                        <Input
+                          type="number"
+                          value={results.confirmedOrders || ''}
+                          min={0}
+                          max={inputs.totalOrders}
+                          onChange={(e) => {
+                            let val = parseFloat(e.target.value) || 0;
+                            if (val > inputs.totalOrders) val = inputs.totalOrders;
+                            if (val < 0) val = 0;
+                            const newRate = inputs.totalOrders > 0 ? parseFloat(((val / inputs.totalOrders) * 100).toFixed(2)) : 0;
+                            const newDelivered = (val * inputs.deliveryRate) / 100;
+                            setInputs(prev => ({ ...prev, confirmationRate: newRate }));
+                            setResults(prev => prev ? { ...prev, confirmedOrders: val, deliveredOrders: newDelivered } : prev);
+                          }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
+                          className="text-5xl font-black tabular-nums bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none mb-3"
+                          data-testid="input-confirmed-orders"
+                        />
+                        <span className="text-sm font-bold text-blue-500 bg-blue-500/15 px-3 py-1.5 rounded-lg inline-block">{inputs.confirmationRate}% rate</span>
                       </div>
-
-                      <div className="h-px bg-muted/20" />
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <TrendingUp className="w-4 h-4 text-green-500" />
-                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Revenue</p>
+                      <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="w-8 h-8 rounded-xl bg-purple-500/15 flex items-center justify-center">
+                            <Truck className="w-4 h-4 text-purple-500" />
                           </div>
-                          <p className="text-3xl font-black tabular-nums text-foreground">{formatCurrency(results.totalRevenue, 'USD')}</p>
+                          <p className="text-sm text-purple-400 uppercase tracking-wider font-bold">Delivered</p>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <TrendingDown className="w-4 h-4 text-red-500" />
-                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Costs</p>
-                          </div>
-                          <p className="text-3xl font-black tabular-nums text-red-400">-{formatCurrency(results.totalCosts, 'USD')}</p>
+                        <Input
+                          type="number"
+                          value={results.deliveredOrders || ''}
+                          min={0}
+                          max={results.confirmedOrders}
+                          onChange={(e) => {
+                            let val = parseFloat(e.target.value) || 0;
+                            if (val > results.confirmedOrders) val = results.confirmedOrders;
+                            if (val < 0) val = 0;
+                            const newRate = results.confirmedOrders > 0 ? parseFloat(((val / results.confirmedOrders) * 100).toFixed(2)) : 0;
+                            setInputs(prev => ({ ...prev, deliveryRate: newRate }));
+                            setResults(prev => prev ? { ...prev, deliveredOrders: val } : prev);
+                          }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
+                          className="text-5xl font-black tabular-nums bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none mb-3"
+                          data-testid="input-delivered-orders"
+                        />
+                        <span className="text-sm font-bold text-purple-500 bg-purple-500/15 px-3 py-1.5 rounded-lg inline-block">{inputs.deliveryRate}% rate</span>
+                      </div>
+                    </div>
+
+                    {/* Revenue & Costs */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="rounded-xl border border-muted/20 bg-muted/5 p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <TrendingUp className="w-4 h-4 text-green-500" />
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Revenue</p>
                         </div>
+                        <p className="text-3xl font-black tabular-nums">{formatCurrency(results.totalRevenue, 'USD')}</p>
+                      </div>
+                      <div className="rounded-xl border border-muted/20 bg-muted/5 p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <TrendingDown className="w-4 h-4 text-red-500" />
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Costs</p>
+                        </div>
+                        <p className="text-3xl font-black tabular-nums text-red-400">-{formatCurrency(results.totalCosts, 'USD')}</p>
                       </div>
                     </div>
 
