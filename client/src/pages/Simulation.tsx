@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { RotateCcw, Calculator, DollarSign, TrendingUp, TrendingDown, Package, CheckCircle, Truck, Coins, Save, History, Trash2, ArrowUpRight, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -494,129 +493,121 @@ export default function Simulation() {
             <Card className="border-muted/30 shadow-lg bg-card/80 backdrop-blur-sm h-full">
               <CardHeader className="pb-4 border-b border-muted/20">
                 <CardTitle className="text-blue-500 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4" /> Results Analysis
+                    <TrendingUp className="w-4 h-4" /> Results
                 </CardTitle>
-                <p className="text-xs text-muted-foreground">Comprehensive breakdown of your simulation.</p>
               </CardHeader>
-              <CardContent className="space-y-6 pt-6">
+              <CardContent className="pt-6">
                 {!results ? (
-                  <div className="h-[400px] flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed border-muted/40 rounded-xl bg-muted/5 animate-in fade-in zoom-in-95 duration-500">
-                    <div className="w-16 h-16 rounded-full bg-muted/20 flex items-center justify-center mb-4">
-                        <Calculator className="w-8 h-8 opacity-40" />
-                    </div>
+                  <div className="h-[400px] flex flex-col items-center justify-center text-muted-foreground border-2 border-dashed border-muted/40 rounded-xl bg-muted/5">
+                    <Calculator className="w-10 h-10 opacity-30 mb-3" />
                     <p className="font-medium">Ready to Simulate</p>
-                    <p className="text-sm opacity-60 mt-1">Enter your metrics and click Calculate</p>
+                    <p className="text-sm opacity-60 mt-1">Enter your metrics and press Enter</p>
                   </div>
                 ) : (
-                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    
-                    {/* Top Stats Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-muted/20 rounded-xl p-4 border border-muted/20 relative overflow-hidden group hover:border-blue-500/20 transition-colors">
-                            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110" />
-                            <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium mb-1">Confirmed Orders</p>
-                            <Input
-                              type="number"
-                              value={results.confirmedOrders || ''}
-                              min={0}
-                              max={inputs.totalOrders}
-                              onChange={(e) => {
-                                let val = parseFloat(e.target.value) || 0;
-                                if (val > inputs.totalOrders) val = inputs.totalOrders;
-                                if (val < 0) val = 0;
-                                const newRate = inputs.totalOrders > 0 ? parseFloat(((val / inputs.totalOrders) * 100).toFixed(2)) : 0;
-                                const newDelivered = (val * inputs.deliveryRate) / 100;
-                                setInputs(prev => ({ ...prev, confirmationRate: newRate }));
-                                setResults(prev => prev ? { ...prev, confirmedOrders: val, deliveredOrders: newDelivered } : prev);
-                              }}
-                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
-                              className="text-3xl font-bold tracking-tight bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              data-testid="input-confirmed-orders"
-                            />
-                            <p className="text-[10px] text-muted-foreground mt-2 font-mono bg-background/50 w-fit px-1.5 py-0.5 rounded">
-                                {inputs.confirmationRate}% Rate
-                            </p>
+                  <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+                    {/* Profit Hero */}
+                    <div className={`p-5 rounded-2xl border-2 ${results.totalProfit > 0 ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                      <p className={`text-[11px] font-bold uppercase tracking-widest mb-2 ${results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>Net Profit</p>
+                      <div className="flex items-end justify-between gap-4">
+                        <div className={`text-5xl font-black tracking-tight tabular-nums ${results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {formatCurrency(results.totalProfit, 'USD')}
                         </div>
-                        <div className="bg-muted/20 rounded-xl p-4 border border-muted/20 relative overflow-hidden group hover:border-blue-500/20 transition-colors">
-                            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110" />
-                            <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium mb-1">Delivered Orders</p>
-                            <Input
-                              type="number"
-                              value={results.deliveredOrders || ''}
-                              min={0}
-                              max={results.confirmedOrders}
-                              onChange={(e) => {
-                                let val = parseFloat(e.target.value) || 0;
-                                if (val > results.confirmedOrders) val = results.confirmedOrders;
-                                if (val < 0) val = 0;
-                                const newRate = results.confirmedOrders > 0 ? parseFloat(((val / results.confirmedOrders) * 100).toFixed(2)) : 0;
-                                setInputs(prev => ({ ...prev, deliveryRate: newRate }));
-                                setResults(prev => prev ? { ...prev, deliveredOrders: val } : prev);
-                              }}
-                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
-                              className="text-3xl font-bold tracking-tight bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              data-testid="input-delivered-orders"
-                            />
-                            <p className="text-[10px] text-muted-foreground mt-2 font-mono bg-background/50 w-fit px-1.5 py-0.5 rounded">
-                                {inputs.deliveryRate}% Rate
-                            </p>
+                        <div className="text-right pb-1">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Per Delivered</p>
+                          <p className={`text-2xl font-bold tabular-nums ${results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {formatCurrency(results.profitPerDelivered, 'USD')}
+                          </p>
                         </div>
+                      </div>
                     </div>
 
-                    {/* Financial Summary */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 rounded-xl bg-muted/10 border border-muted/20 flex flex-col justify-between h-24">
-                          <div className="flex justify-between items-start">
-                            <p className="text-muted-foreground text-xs uppercase font-bold">Total Revenue</p>
-                            <TrendingUp className="w-4 h-4 text-green-500/50" />
-                          </div>
-                          <p className="text-2xl font-bold font-mono">{formatCurrency(results.totalRevenue, 'USD')}</p>
+                    {/* Orders Row */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-muted/30 bg-muted/5 p-4">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mb-2">Confirmed Orders</p>
+                        <div className="flex items-baseline gap-2">
+                          <Input
+                            type="number"
+                            value={results.confirmedOrders || ''}
+                            min={0}
+                            max={inputs.totalOrders}
+                            onChange={(e) => {
+                              let val = parseFloat(e.target.value) || 0;
+                              if (val > inputs.totalOrders) val = inputs.totalOrders;
+                              if (val < 0) val = 0;
+                              const newRate = inputs.totalOrders > 0 ? parseFloat(((val / inputs.totalOrders) * 100).toFixed(2)) : 0;
+                              const newDelivered = (val * inputs.deliveryRate) / 100;
+                              setInputs(prev => ({ ...prev, confirmationRate: newRate }));
+                              setResults(prev => prev ? { ...prev, confirmedOrders: val, deliveredOrders: newDelivered } : prev);
+                            }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
+                            className="text-3xl font-black tabular-nums bg-transparent border-none p-0 h-auto w-24 focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            data-testid="input-confirmed-orders"
+                          />
+                          <span className="text-xs text-muted-foreground font-mono bg-muted/30 px-2 py-0.5 rounded-full">{inputs.confirmationRate}%</span>
                         </div>
-
-                        <div className="p-4 rounded-xl bg-muted/10 border border-muted/20 flex flex-col justify-between h-24">
-                          <div className="flex justify-between items-start">
-                            <p className="text-muted-foreground text-xs uppercase font-bold">Total Costs</p>
-                            <TrendingDown className="w-4 h-4 text-red-500/50" />
-                          </div>
-                          <p className="text-2xl font-bold font-mono text-red-400">-{formatCurrency(results.totalCosts, 'USD')}</p>
+                      </div>
+                      <div className="rounded-xl border border-muted/30 bg-muted/5 p-4">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mb-2">Delivered Orders</p>
+                        <div className="flex items-baseline gap-2">
+                          <Input
+                            type="number"
+                            value={results.deliveredOrders || ''}
+                            min={0}
+                            max={results.confirmedOrders}
+                            onChange={(e) => {
+                              let val = parseFloat(e.target.value) || 0;
+                              if (val > results.confirmedOrders) val = results.confirmedOrders;
+                              if (val < 0) val = 0;
+                              const newRate = results.confirmedOrders > 0 ? parseFloat(((val / results.confirmedOrders) * 100).toFixed(2)) : 0;
+                              setInputs(prev => ({ ...prev, deliveryRate: newRate }));
+                              setResults(prev => prev ? { ...prev, deliveredOrders: val } : prev);
+                            }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
+                            className="text-3xl font-black tabular-nums bg-transparent border-none p-0 h-auto w-24 focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            data-testid="input-delivered-orders"
+                          />
+                          <span className="text-xs text-muted-foreground font-mono bg-muted/30 px-2 py-0.5 rounded-full">{inputs.deliveryRate}%</span>
                         </div>
+                      </div>
                     </div>
 
-                    {/* CPA / CPD / TDC */}
+                    {/* Revenue & Costs */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-muted/30 bg-muted/5 p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Revenue</p>
+                          <TrendingUp className="w-3.5 h-3.5 text-green-500/60" />
+                        </div>
+                        <p className="text-2xl font-black tabular-nums text-foreground">{formatCurrency(results.totalRevenue, 'USD')}</p>
+                      </div>
+                      <div className="rounded-xl border border-muted/30 bg-muted/5 p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Costs</p>
+                          <TrendingDown className="w-3.5 h-3.5 text-red-500/60" />
+                        </div>
+                        <p className="text-2xl font-black tabular-nums text-red-400">-{formatCurrency(results.totalCosts, 'USD')}</p>
+                      </div>
+                    </div>
+
+                    {/* CPD / CPA / CPAD */}
                     <div className="grid grid-cols-3 gap-3">
-                        <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 text-center">
-                          <p className="text-blue-500 text-[10px] uppercase font-bold tracking-wider mb-1">CPD</p>
-                          <p className="text-lg font-bold font-mono text-blue-500">{formatCurrency(results.tdc, 'USD')}</p>
-                          <p className="text-[9px] text-muted-foreground font-mono mt-0.5">Total Delivery Cost</p>
-                        </div>
-                        <div className="p-3 rounded-xl bg-muted/10 border border-muted/20 text-center">
-                          <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider mb-1">CPA</p>
-                          <p className="text-lg font-bold font-mono">{formatCurrency(results.cpa, 'USD')}</p>
-                          <p className="text-[9px] text-muted-foreground font-mono mt-0.5">Ads / Order</p>
-                        </div>
-                        <div className="p-3 rounded-xl bg-muted/10 border border-muted/20 text-center">
-                          <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-wider mb-1">CPAD</p>
-                          <p className="text-lg font-bold font-mono">{formatCurrency(results.cpaDelivered, 'USD')}</p>
-                          <p className="text-[9px] text-muted-foreground font-mono mt-0.5">Ads / Delivered</p>
-                        </div>
-                    </div>
-
-                    {/* Profit Highlight */}
-                    <div className={`p-6 rounded-xl border-2 transition-all duration-500 ${results.totalProfit > 0 ? 'bg-green-500/10 border-green-500/20 shadow-[0_0_30px_-10px_rgba(34,197,94,0.2)]' : 'bg-red-500/10 border-red-500/20'}`}>
-                        <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-                            <div>
-                                <p className={`text-sm font-bold uppercase tracking-wider mb-1 ${results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>Net Profit (USD)</p>
-                                <div className={`text-5xl font-black tracking-tighter ${results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                    {formatCurrency(results.totalProfit, 'USD')}
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-xs text-muted-foreground mb-1">Profit per Delivered</p>
-                                <p className={`text-xl font-bold ${results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                    {formatCurrency(results.profitPerDelivered, 'USD')}
-                                </p>
-                            </div>
-                        </div>
+                      <div className="rounded-xl border-2 border-blue-500/20 bg-blue-500/5 p-4 text-center">
+                        <p className="text-[10px] text-blue-400 uppercase tracking-widest font-bold mb-1">CPD</p>
+                        <p className="text-2xl font-black tabular-nums text-blue-500">{formatCurrency(results.tdc, 'USD')}</p>
+                        <p className="text-[9px] text-muted-foreground mt-1">Total Delivery Cost</p>
+                      </div>
+                      <div className="rounded-xl border border-muted/30 bg-muted/5 p-4 text-center">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">CPA</p>
+                        <p className="text-2xl font-black tabular-nums">{formatCurrency(results.cpa, 'USD')}</p>
+                        <p className="text-[9px] text-muted-foreground mt-1">Ads / Order</p>
+                      </div>
+                      <div className="rounded-xl border border-muted/30 bg-muted/5 p-4 text-center">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">CPAD</p>
+                        <p className="text-2xl font-black tabular-nums">{formatCurrency(results.cpaDelivered, 'USD')}</p>
+                        <p className="text-[9px] text-muted-foreground mt-1">Ads / Delivered</p>
+                      </div>
                     </div>
 
                   </div>
