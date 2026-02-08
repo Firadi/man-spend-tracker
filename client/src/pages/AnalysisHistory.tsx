@@ -17,9 +17,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, Trash2, History, Search, AlertCircle, Pencil, ShoppingCart, TrendingUp, CheckCircle, Truck, Target, DollarSign, BarChart3, Percent, Filter, Globe, ArrowUpDown, ArrowUp, ArrowDown, Megaphone, CalendarDays } from "lucide-react";
+import { Eye, Trash2, History, Search, AlertCircle, Pencil, ShoppingCart, TrendingUp, CheckCircle, Truck, Target, DollarSign, BarChart3, Percent, Filter, Globe, ArrowUpDown, ArrowUp, ArrowDown, Megaphone, CalendarDays, Download, FileSpreadsheet, FileType } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
 
 interface SnapshotRow {
   productId: string;
@@ -474,6 +476,89 @@ export default function AnalysisHistory() {
 
   const periodSort = useSorting(periodsWithExtra, { key: "createdAtTs", direction: "desc" });
 
+  const exportCountrySummaryExcel = useCallback(() => {
+    const data = countrySort.sorted.map(c => ({
+      Country: c.countryName,
+      Orders: c.totalOrders,
+      Confirmed: c.ordersConfirmed,
+      "Conf. %": `${c.confirmationRate.toFixed(1)}%`,
+      Delivered: c.deliveredOrders,
+      "Del. %": `${c.deliveryRate.toFixed(1)}%`,
+      "Ads Spend": c.totalAds,
+      Revenue: c.totalRevenue,
+      Profit: c.profit,
+      "Margin %": `${c.margin.toFixed(1)}%`,
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Country Summary");
+    XLSX.writeFile(wb, "country_summary.xlsx");
+  }, [countrySort.sorted]);
+
+  const exportCountrySummaryPDF = useCallback(() => {
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.setFontSize(16);
+    doc.text("Country Summary", 14, 15);
+    doc.setFontSize(8);
+    const headers = ["Country", "Orders", "Confirmed", "Conf.%", "Delivered", "Del.%", "Ads Spend", "Revenue", "Profit", "Margin%"];
+    const startY = 25;
+    const colWidths = [40, 22, 26, 20, 26, 20, 28, 28, 28, 22];
+    let x = 14;
+    doc.setFont("helvetica", "bold");
+    headers.forEach((h, i) => { doc.text(h, x, startY); x += colWidths[i]; });
+    doc.setFont("helvetica", "normal");
+    countrySort.sorted.forEach((c, idx) => {
+      const y = startY + 7 + idx * 6;
+      if (y > 190) return;
+      let cx = 14;
+      const row = [c.countryName, String(c.totalOrders), String(c.ordersConfirmed), `${c.confirmationRate.toFixed(1)}%`, String(c.deliveredOrders), `${c.deliveryRate.toFixed(1)}%`, String(c.totalAds), String(c.totalRevenue), String(c.profit), `${c.margin.toFixed(1)}%`];
+      row.forEach((val, i) => { doc.text(val, cx, y); cx += colWidths[i]; });
+    });
+    doc.save("country_summary.pdf");
+  }, [countrySort.sorted]);
+
+  const exportPeriodsExcel = useCallback(() => {
+    const data = periodSort.sorted.map(s => ({
+      Period: s.periodName,
+      Country: s.countryName,
+      Orders: s.totalOrders,
+      Confirmed: s.ordersConfirmed,
+      "Conf. %": `${s.confirmationRate.toFixed(1)}%`,
+      Delivered: s.deliveredOrders,
+      "Del. %": `${s.deliveryRate.toFixed(1)}%`,
+      Revenue: s.totalRevenue,
+      Profit: s.profit,
+      "Margin %": `${s.margin.toFixed(1)}%`,
+      Date: new Date(s.createdAt).toLocaleDateString(),
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Periods");
+    XLSX.writeFile(wb, "periods.xlsx");
+  }, [periodSort.sorted]);
+
+  const exportPeriodsPDF = useCallback(() => {
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.setFontSize(16);
+    doc.text("Periods", 14, 15);
+    doc.setFontSize(7);
+    const headers = ["Period", "Country", "Orders", "Confirmed", "Conf.%", "Delivered", "Del.%", "Revenue", "Profit", "Margin%", "Date"];
+    const startY = 25;
+    const colWidths = [45, 30, 20, 24, 18, 24, 18, 26, 26, 22, 26];
+    let x = 14;
+    doc.setFont("helvetica", "bold");
+    headers.forEach((h, i) => { doc.text(h, x, startY); x += colWidths[i]; });
+    doc.setFont("helvetica", "normal");
+    periodSort.sorted.forEach((s, idx) => {
+      const y = startY + 7 + idx * 5;
+      if (y > 190) return;
+      let cx = 14;
+      const row = [s.periodName, s.countryName, String(s.totalOrders), String(s.ordersConfirmed), `${s.confirmationRate.toFixed(1)}%`, String(s.deliveredOrders), `${s.deliveryRate.toFixed(1)}%`, String(s.totalRevenue), String(s.profit), `${s.margin.toFixed(1)}%`, new Date(s.createdAt).toLocaleDateString()];
+      row.forEach((val, i) => { doc.text(val, cx, y); cx += colWidths[i]; });
+    });
+    doc.save("periods.pdf");
+  }, [periodSort.sorted]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[50vh] text-muted-foreground">
@@ -558,10 +643,22 @@ export default function AnalysisHistory() {
 
       {countrySort.sorted.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Globe className="h-5 w-5 text-primary/60" />
-            Country Summary
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Globe className="h-5 w-5 text-primary/60" />
+              Country Summary
+            </h3>
+            <div className="flex items-center gap-1.5">
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={exportCountrySummaryExcel} data-testid="button-export-country-excel">
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={exportCountrySummaryPDF} data-testid="button-export-country-pdf">
+                <FileType className="h-3.5 w-3.5" />
+                PDF
+              </Button>
+            </div>
+          </div>
           <Card className="shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
@@ -640,10 +737,22 @@ export default function AnalysisHistory() {
         </div>
       ) : (
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <History className="h-5 w-5 text-primary/60" />
-            Periods
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <History className="h-5 w-5 text-primary/60" />
+              Periods
+            </h3>
+            <div className="flex items-center gap-1.5">
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={exportPeriodsExcel} data-testid="button-export-periods-excel">
+                <FileSpreadsheet className="h-3.5 w-3.5" />
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={exportPeriodsPDF} data-testid="button-export-periods-pdf">
+                <FileType className="h-3.5 w-3.5" />
+                PDF
+              </Button>
+            </div>
+          </div>
           <Card className="shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
