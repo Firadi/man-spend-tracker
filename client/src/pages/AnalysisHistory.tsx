@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, Trash2, History, Search, AlertCircle, Pencil, ShoppingCart, TrendingUp, CheckCircle, Truck, Target, DollarSign, BarChart3, Percent, Filter } from "lucide-react";
+import { Eye, Trash2, History, Search, AlertCircle, Pencil, ShoppingCart, TrendingUp, CheckCircle, Truck, Target, DollarSign, BarChart3, Percent, Filter, Globe } from "lucide-react";
 
 interface SnapshotRow {
   productId: string;
@@ -192,6 +192,58 @@ export default function AnalysisHistory() {
     return { ...t, confirmationRate, deliveryRate, cpa, cpad, cpd, currency };
   }, [filteredSnapshots]);
 
+  const countrySummary = useMemo(() => {
+    if (filteredSnapshots.length === 0) return [];
+    const map = new Map<string, {
+      countryId: string;
+      countryName: string;
+      currency: string;
+      totalOrders: number;
+      ordersConfirmed: number;
+      deliveredOrders: number;
+      totalRevenue: number;
+      totalAds: number;
+      totalServiceFees: number;
+      totalProductFees: number;
+      profit: number;
+    }>();
+
+    filteredSnapshots.forEach(s => {
+      const existing = map.get(s.countryId);
+      if (existing) {
+        existing.totalOrders += s.totalOrders;
+        existing.ordersConfirmed += s.ordersConfirmed;
+        existing.deliveredOrders += s.deliveredOrders;
+        existing.totalRevenue += s.totalRevenue;
+        existing.totalAds += s.totalAds;
+        existing.totalServiceFees += s.totalServiceFees;
+        existing.totalProductFees += s.totalProductFees;
+        existing.profit += s.profit;
+      } else {
+        map.set(s.countryId, {
+          countryId: s.countryId,
+          countryName: s.countryName,
+          currency: s.currency,
+          totalOrders: s.totalOrders,
+          ordersConfirmed: s.ordersConfirmed,
+          deliveredOrders: s.deliveredOrders,
+          totalRevenue: s.totalRevenue,
+          totalAds: s.totalAds,
+          totalServiceFees: s.totalServiceFees,
+          totalProductFees: s.totalProductFees,
+          profit: s.profit,
+        });
+      }
+    });
+
+    return Array.from(map.values()).map(c => ({
+      ...c,
+      confirmationRate: c.totalOrders > 0 ? (c.ordersConfirmed / c.totalOrders) * 100 : 0,
+      deliveryRate: c.ordersConfirmed > 0 ? (c.deliveredOrders / c.ordersConfirmed) * 100 : 0,
+      margin: c.totalRevenue > 0 ? (c.profit / c.totalRevenue) * 100 : 0,
+    }));
+  }, [filteredSnapshots]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[50vh] text-muted-foreground">
@@ -322,6 +374,59 @@ export default function AnalysisHistory() {
             </div>
             <p className="text-lg font-bold">{summaryTotals.cpd > 0 ? formatCurrency(summaryTotals.cpd, summaryTotals.currency) : '-'}</p>
           </Card>
+        </div>
+      )}
+
+      {countrySummary.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Globe className="h-5 w-5 text-muted-foreground" />
+            Country Summary
+          </h3>
+          <div className="border rounded-md bg-card overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableHead className="min-w-[140px]">Country</TableHead>
+                    <TableHead className="text-right w-[100px]">Orders</TableHead>
+                    <TableHead className="text-right w-[100px]">Confirmed</TableHead>
+                    <TableHead className="text-right w-[90px]">Conf. %</TableHead>
+                    <TableHead className="text-right w-[100px]">Delivered</TableHead>
+                    <TableHead className="text-right w-[90px]">Del. %</TableHead>
+                    <TableHead className="text-right w-[110px]">Ads Spend</TableHead>
+                    <TableHead className="text-right w-[110px]">Revenue</TableHead>
+                    <TableHead className="text-right w-[110px]">Profit</TableHead>
+                    <TableHead className="text-right w-[80px]">Margin</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {countrySummary.map(c => (
+                    <TableRow key={c.countryId} data-testid={`row-country-summary-${c.countryId}`}>
+                      <TableCell className="font-medium">{c.countryName}</TableCell>
+                      <TableCell className="text-right font-mono">{formatNumber(c.totalOrders)}</TableCell>
+                      <TableCell className="text-right font-mono">{formatNumber(c.ordersConfirmed)}</TableCell>
+                      <TableCell className="text-right font-mono">{c.confirmationRate.toFixed(1)}%</TableCell>
+                      <TableCell className="text-right font-mono">{formatNumber(c.deliveredOrders)}</TableCell>
+                      <TableCell className="text-right font-mono">{c.deliveryRate.toFixed(1)}%</TableCell>
+                      <TableCell className="text-right font-mono">{formatCurrency(c.totalAds, c.currency)}</TableCell>
+                      <TableCell className="text-right font-mono">{formatCurrency(c.totalRevenue, c.currency)}</TableCell>
+                      <TableCell className="text-right font-mono">
+                        <span className={c.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          {formatCurrency(c.profit, c.currency)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        <span className={c.margin >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          {c.margin.toFixed(1)}%
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </div>
       )}
 
