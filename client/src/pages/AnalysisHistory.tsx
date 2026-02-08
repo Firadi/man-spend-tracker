@@ -270,6 +270,30 @@ export default function AnalysisHistory() {
     }
   }, [products, getChartDateRange]);
 
+  const filteredChartProducts = useMemo(() => {
+    if (countryFilter === "all") return chartProducts;
+    const countryProductIds = new Set(
+      products.filter(p => p.countryIds?.includes(countryFilter)).map(p => p.id)
+    );
+    return chartProducts.filter(p => countryProductIds.has(p.id));
+  }, [chartProducts, countryFilter, products]);
+
+  const filteredChartData = useMemo(() => {
+    if (countryFilter === "all") return chartData;
+    return chartData.map(entry => {
+      const newEntry: any = { date: entry.date, fullDate: entry.fullDate, total: 0 };
+      filteredChartProducts.forEach(p => {
+        newEntry[p.id] = entry[p.id] || 0;
+        newEntry.total += entry[p.id] || 0;
+      });
+      return newEntry;
+    });
+  }, [chartData, countryFilter, filteredChartProducts]);
+
+  const chartTotalSpend = useMemo(() => {
+    return filteredChartData.reduce((sum, entry) => sum + (entry.total || 0), 0);
+  }, [filteredChartData]);
+
   const handleDelete = async (id: string) => {
     try {
       await apiRequest("DELETE", `/api/analysis-snapshots/${id}`);
@@ -462,7 +486,7 @@ export default function AnalysisHistory() {
           <p className="text-muted-foreground">Saved analysis snapshots for different periods.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Select value={countryFilter} onValueChange={setCountryFilter}>
+          <Select value={countryFilter} onValueChange={(v) => { setCountryFilter(v); setChartProductFilter("all"); }}>
             <SelectTrigger className="w-[180px]" data-testid="select-country-filter">
               <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="All Countries" />
@@ -722,10 +746,17 @@ export default function AnalysisHistory() {
       <Card className="shadow-sm overflow-hidden" data-testid="chart-daily-ads">
         <div className="p-4 pb-2 flex flex-col gap-3 border-b">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Megaphone className="h-5 w-5 text-primary/60" />
-              Daily Ads Spend
-            </h3>
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Megaphone className="h-5 w-5 text-primary/60" />
+                Daily Ads Spend
+              </h3>
+              {!chartLoading && chartTotalSpend > 0 && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-primary/10 text-primary text-sm font-semibold" data-testid="text-chart-total-spend">
+                  Total: ${chartTotalSpend.toFixed(2)}
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <Select value={chartDateFilter} onValueChange={setChartDateFilter}>
                 <SelectTrigger className="w-[160px]" data-testid="select-chart-date-filter">
@@ -747,7 +778,7 @@ export default function AnalysisHistory() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Products</SelectItem>
-                  {chartProducts.map(p => (
+                  {filteredChartProducts.map(p => (
                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -779,16 +810,16 @@ export default function AnalysisHistory() {
             <div className="flex items-center justify-center h-[280px] text-muted-foreground">
               <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
             </div>
-          ) : chartData.length === 0 || chartProducts.length === 0 ? (
+          ) : filteredChartData.length === 0 || filteredChartProducts.length === 0 ? (
             <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">
               No ads data available for this period.
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <AreaChart data={filteredChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                 <defs>
                   {chartProductFilter === "all" ? (
-                    chartProducts.map((p, i) => (
+                    filteredChartProducts.map((p, i) => (
                       <linearGradient key={p.id} id={`gradient-${p.id}`} x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor={CHART_COLORS[i % CHART_COLORS.length]} stopOpacity={0.3} />
                         <stop offset="95%" stopColor={CHART_COLORS[i % CHART_COLORS.length]} stopOpacity={0} />
@@ -825,13 +856,13 @@ export default function AnalysisHistory() {
                     boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
                   }}
                   formatter={(value: number, name: string) => {
-                    const product = chartProducts.find(p => p.id === name);
+                    const product = filteredChartProducts.find(p => p.id === name);
                     return [`$${value.toFixed(2)}`, product?.name || name];
                   }}
                   labelFormatter={(label) => `Date: ${label}`}
                 />
                 {chartProductFilter === "all" ? (
-                  chartProducts.map((p, i) => (
+                  filteredChartProducts.map((p, i) => (
                     <Area
                       key={p.id}
                       type="monotone"
