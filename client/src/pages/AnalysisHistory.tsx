@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useStore } from "@/lib/store";
@@ -17,7 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, Trash2, History, Search, AlertCircle, Pencil, ShoppingCart, TrendingUp, CheckCircle, Truck, Target, DollarSign, BarChart3, Percent, Filter, Globe } from "lucide-react";
+import { Eye, Trash2, History, Search, AlertCircle, Pencil, ShoppingCart, TrendingUp, CheckCircle, Truck, Target, DollarSign, BarChart3, Percent, Filter, Globe, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface SnapshotRow {
   productId: string;
@@ -55,6 +56,69 @@ interface AnalysisSnapshot {
   profit: number;
   margin: number;
   createdAt: string;
+}
+
+type SortDirection = "asc" | "desc" | null;
+
+interface SortConfig {
+  key: string;
+  direction: SortDirection;
+}
+
+function SortableHeader({ label, sortKey, currentSort, onSort, className }: {
+  label: string;
+  sortKey: string;
+  currentSort: SortConfig;
+  onSort: (key: string) => void;
+  className?: string;
+}) {
+  const isActive = currentSort.key === sortKey;
+  return (
+    <TableHead
+      className={cn("cursor-pointer select-none group hover:bg-muted/80 transition-colors", className)}
+      onClick={() => onSort(sortKey)}
+      data-testid={`sort-${sortKey}`}
+    >
+      <div className={cn("flex items-center gap-1", className?.includes("text-right") && "justify-end")}>
+        <span className="whitespace-nowrap">{label}</span>
+        <span className={cn("transition-opacity", isActive ? "opacity-100" : "opacity-0 group-hover:opacity-40")}>
+          {isActive && currentSort.direction === "asc" ? (
+            <ArrowUp className="h-3.5 w-3.5" />
+          ) : isActive && currentSort.direction === "desc" ? (
+            <ArrowDown className="h-3.5 w-3.5" />
+          ) : (
+            <ArrowUpDown className="h-3.5 w-3.5" />
+          )}
+        </span>
+      </div>
+    </TableHead>
+  );
+}
+
+function useSorting<T>(data: T[], defaultSort?: SortConfig) {
+  const [sort, setSort] = useState<SortConfig>(defaultSort || { key: "", direction: null });
+
+  const handleSort = useCallback((key: string) => {
+    setSort(prev => {
+      if (prev.key !== key) return { key, direction: "desc" };
+      if (prev.direction === "desc") return { key, direction: "asc" };
+      return { key: "", direction: null };
+    });
+  }, []);
+
+  const sorted = useMemo(() => {
+    if (!sort.key || !sort.direction) return data;
+    return [...data].sort((a, b) => {
+      const aVal = (a as any)[sort.key];
+      const bVal = (b as any)[sort.key];
+      if (typeof aVal === "string") {
+        return sort.direction === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      return sort.direction === "asc" ? aVal - bVal : bVal - aVal;
+    });
+  }, [data, sort]);
+
+  return { sort, handleSort, sorted };
 }
 
 export default function AnalysisHistory() {
@@ -244,6 +308,19 @@ export default function AnalysisHistory() {
     }));
   }, [filteredSnapshots]);
 
+  const countrySort = useSorting(countrySummary, { key: "profit", direction: "desc" });
+
+  const periodsWithExtra = useMemo(() => {
+    return filteredSnapshots.map(s => ({
+      ...s,
+      confirmationRate: s.totalOrders > 0 ? (s.ordersConfirmed / s.totalOrders) * 100 : 0,
+      deliveryRate: s.ordersConfirmed > 0 ? (s.deliveredOrders / s.ordersConfirmed) * 100 : 0,
+      createdAtTs: new Date(s.createdAt).getTime(),
+    }));
+  }, [filteredSnapshots]);
+
+  const periodSort = useSorting(periodsWithExtra, { key: "createdAtTs", direction: "desc" });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[50vh] text-muted-foreground">
@@ -290,134 +367,107 @@ export default function AnalysisHistory() {
       </div>
 
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 p-2 px-3 bg-blue-50 border border-blue-200 rounded-lg" data-testid="selection-indicator">
+        <div className="flex items-center gap-3 p-2.5 px-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm" data-testid="selection-indicator">
+          <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
           <span className="text-sm font-medium text-blue-800">
             {selectedIds.size} period{selectedIds.size > 1 ? 's' : ''} selected
           </span>
           <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-600 hover:text-blue-800" onClick={clearSelection} data-testid="button-clear-selection">
-            Clear selection
+            Clear
           </Button>
         </div>
       )}
 
       {summaryTotals && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-          <Card className="p-3" data-testid="card-total-profit">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs font-medium text-muted-foreground">Total Profit</p>
-            </div>
-            <p className={`text-lg font-bold ${summaryTotals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCurrency(summaryTotals.profit, summaryTotals.currency)}
-            </p>
-          </Card>
-          <Card className="p-3" data-testid="card-total-orders">
-            <div className="flex items-center gap-2 mb-1">
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs font-medium text-muted-foreground">Total Orders</p>
-            </div>
-            <p className="text-lg font-bold">{formatNumber(summaryTotals.totalOrders)}</p>
-          </Card>
-          <Card className="p-3" data-testid="card-total-confirmed">
-            <div className="flex items-center gap-2 mb-1">
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs font-medium text-muted-foreground">Confirmed</p>
-            </div>
-            <p className="text-lg font-bold">{formatNumber(summaryTotals.ordersConfirmed)}</p>
-          </Card>
-          <Card className="p-3" data-testid="card-total-delivered">
-            <div className="flex items-center gap-2 mb-1">
-              <Truck className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs font-medium text-muted-foreground">Delivered</p>
-            </div>
-            <p className="text-lg font-bold">{formatNumber(summaryTotals.deliveredOrders)}</p>
-          </Card>
-          <Card className="p-3" data-testid="card-confirmation-rate">
-            <div className="flex items-center gap-2 mb-1">
-              <Percent className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs font-medium text-muted-foreground">Conf. Rate</p>
-            </div>
-            <p className="text-lg font-bold">{summaryTotals.confirmationRate.toFixed(1)}%</p>
-          </Card>
-          <Card className="p-3" data-testid="card-delivery-rate">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs font-medium text-muted-foreground">Delivery Rate</p>
-            </div>
-            <p className="text-lg font-bold">{summaryTotals.deliveryRate.toFixed(1)}%</p>
-          </Card>
-          <Card className="p-3" data-testid="card-total-spend">
-            <div className="flex items-center gap-2 mb-1">
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs font-medium text-muted-foreground">Total Spend</p>
-            </div>
-            <p className="text-lg font-bold">{formatCurrency(summaryTotals.totalAds, summaryTotals.currency)}</p>
-          </Card>
-          <Card className="p-3" data-testid="card-cpa">
-            <div className="flex items-center gap-2 mb-1">
-              <Target className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs font-medium text-muted-foreground">CPA</p>
-            </div>
-            <p className="text-lg font-bold">{summaryTotals.cpa > 0 ? formatCurrency(summaryTotals.cpa, summaryTotals.currency) : '-'}</p>
-          </Card>
-          <Card className="p-3" data-testid="card-cpad">
-            <div className="flex items-center gap-2 mb-1">
-              <Target className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs font-medium text-muted-foreground">CPAD</p>
-            </div>
-            <p className="text-lg font-bold">{summaryTotals.cpad > 0 ? formatCurrency(summaryTotals.cpad, summaryTotals.currency) : '-'}</p>
-          </Card>
-          <Card className="p-3" data-testid="card-cpd">
-            <div className="flex items-center gap-2 mb-1">
-              <Target className="h-4 w-4 text-muted-foreground" />
-              <p className="text-xs font-medium text-muted-foreground">CPD</p>
-            </div>
-            <p className="text-lg font-bold">{summaryTotals.cpd > 0 ? formatCurrency(summaryTotals.cpd, summaryTotals.currency) : '-'}</p>
-          </Card>
+          {[
+            { icon: DollarSign, label: "Total Profit", value: formatCurrency(summaryTotals.profit, summaryTotals.currency), color: summaryTotals.profit >= 0 ? "text-green-600" : "text-red-600", id: "total-profit" },
+            { icon: ShoppingCart, label: "Total Orders", value: formatNumber(summaryTotals.totalOrders), id: "total-orders" },
+            { icon: CheckCircle, label: "Confirmed", value: formatNumber(summaryTotals.ordersConfirmed), id: "confirmed" },
+            { icon: Truck, label: "Delivered", value: formatNumber(summaryTotals.deliveredOrders), id: "delivered" },
+            { icon: Percent, label: "Conf. Rate", value: `${summaryTotals.confirmationRate.toFixed(1)}%`, id: "conf-rate" },
+            { icon: TrendingUp, label: "Del. Rate", value: `${summaryTotals.deliveryRate.toFixed(1)}%`, id: "del-rate" },
+            { icon: BarChart3, label: "Total Spend", value: formatCurrency(summaryTotals.totalAds, summaryTotals.currency), id: "total-spend" },
+            { icon: Target, label: "CPA", value: summaryTotals.cpa > 0 ? formatCurrency(summaryTotals.cpa, summaryTotals.currency) : '-', id: "cpa" },
+            { icon: Target, label: "CPAD", value: summaryTotals.cpad > 0 ? formatCurrency(summaryTotals.cpad, summaryTotals.currency) : '-', id: "cpad" },
+            { icon: Target, label: "CPD", value: summaryTotals.cpd > 0 ? formatCurrency(summaryTotals.cpd, summaryTotals.currency) : '-', id: "cpd" },
+          ].map(card => (
+            <Card key={card.id} className="p-3 shadow-sm hover:shadow-md transition-shadow border-l-4 border-l-primary/20" data-testid={`card-${card.id}`}>
+              <div className="flex items-center gap-2 mb-1">
+                <card.icon className="h-4 w-4 text-primary/60" />
+                <p className="text-xs font-medium text-muted-foreground">{card.label}</p>
+              </div>
+              <p className={cn("text-lg font-bold", card.color || "")}>{card.value}</p>
+            </Card>
+          ))}
         </div>
       )}
 
-      {countrySummary.length > 0 && (
-        <div className="space-y-2">
+      {countrySort.sorted.length > 0 && (
+        <div className="space-y-3">
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Globe className="h-5 w-5 text-muted-foreground" />
+            <Globe className="h-5 w-5 text-primary/60" />
             Country Summary
           </h3>
-          <div className="border rounded-md bg-card overflow-hidden">
+          <Card className="shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/50 hover:bg-muted/50">
-                    <TableHead className="min-w-[140px]">Country</TableHead>
-                    <TableHead className="text-right w-[100px]">Orders</TableHead>
-                    <TableHead className="text-right w-[100px]">Confirmed</TableHead>
-                    <TableHead className="text-right w-[90px]">Conf. %</TableHead>
-                    <TableHead className="text-right w-[100px]">Delivered</TableHead>
-                    <TableHead className="text-right w-[90px]">Del. %</TableHead>
-                    <TableHead className="text-right w-[110px]">Ads Spend</TableHead>
-                    <TableHead className="text-right w-[110px]">Revenue</TableHead>
-                    <TableHead className="text-right w-[110px]">Profit</TableHead>
-                    <TableHead className="text-right w-[80px]">Margin</TableHead>
+                  <TableRow className="bg-gradient-to-r from-muted/60 to-muted/30 hover:from-muted/60 hover:to-muted/30">
+                    <SortableHeader label="Country" sortKey="countryName" currentSort={countrySort.sort} onSort={countrySort.handleSort} className="min-w-[140px]" />
+                    <SortableHeader label="Orders" sortKey="totalOrders" currentSort={countrySort.sort} onSort={countrySort.handleSort} className="text-right w-[100px]" />
+                    <SortableHeader label="Confirmed" sortKey="ordersConfirmed" currentSort={countrySort.sort} onSort={countrySort.handleSort} className="text-right w-[100px]" />
+                    <SortableHeader label="Conf. %" sortKey="confirmationRate" currentSort={countrySort.sort} onSort={countrySort.handleSort} className="text-right w-[90px]" />
+                    <SortableHeader label="Delivered" sortKey="deliveredOrders" currentSort={countrySort.sort} onSort={countrySort.handleSort} className="text-right w-[100px]" />
+                    <SortableHeader label="Del. %" sortKey="deliveryRate" currentSort={countrySort.sort} onSort={countrySort.handleSort} className="text-right w-[90px]" />
+                    <SortableHeader label="Ads Spend" sortKey="totalAds" currentSort={countrySort.sort} onSort={countrySort.handleSort} className="text-right w-[110px]" />
+                    <SortableHeader label="Revenue" sortKey="totalRevenue" currentSort={countrySort.sort} onSort={countrySort.handleSort} className="text-right w-[110px]" />
+                    <SortableHeader label="Profit" sortKey="profit" currentSort={countrySort.sort} onSort={countrySort.handleSort} className="text-right w-[110px]" />
+                    <SortableHeader label="Margin" sortKey="margin" currentSort={countrySort.sort} onSort={countrySort.handleSort} className="text-right w-[80px]" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {countrySummary.map(c => (
-                    <TableRow key={c.countryId} data-testid={`row-country-summary-${c.countryId}`}>
-                      <TableCell className="font-medium">{c.countryName}</TableCell>
-                      <TableCell className="text-right font-mono">{formatNumber(c.totalOrders)}</TableCell>
-                      <TableCell className="text-right font-mono">{formatNumber(c.ordersConfirmed)}</TableCell>
-                      <TableCell className="text-right font-mono">{c.confirmationRate.toFixed(1)}%</TableCell>
-                      <TableCell className="text-right font-mono">{formatNumber(c.deliveredOrders)}</TableCell>
-                      <TableCell className="text-right font-mono">{c.deliveryRate.toFixed(1)}%</TableCell>
-                      <TableCell className="text-right font-mono">{formatCurrency(c.totalAds, c.currency)}</TableCell>
-                      <TableCell className="text-right font-mono">{formatCurrency(c.totalRevenue, c.currency)}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        <span className={c.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  {countrySort.sorted.map((c, idx) => (
+                    <TableRow
+                      key={c.countryId}
+                      className={cn(
+                        "transition-colors hover:bg-muted/40",
+                        idx % 2 === 0 ? "bg-background" : "bg-muted/10"
+                      )}
+                      data-testid={`row-country-summary-${c.countryId}`}
+                    >
+                      <TableCell className="font-semibold">{c.countryName}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{formatNumber(c.totalOrders)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{formatNumber(c.ordersConfirmed)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        <span className={cn(
+                          "inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium",
+                          c.confirmationRate >= 50 ? "bg-green-50 text-green-700" : c.confirmationRate >= 30 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"
+                        )}>
+                          {c.confirmationRate.toFixed(1)}%
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">{formatNumber(c.deliveredOrders)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        <span className={cn(
+                          "inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium",
+                          c.deliveryRate >= 80 ? "bg-green-50 text-green-700" : c.deliveryRate >= 50 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"
+                        )}>
+                          {c.deliveryRate.toFixed(1)}%
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">{formatCurrency(c.totalAds, c.currency)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{formatCurrency(c.totalRevenue, c.currency)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        <span className={cn("font-semibold", c.profit >= 0 ? "text-green-600" : "text-red-600")}>
                           {formatCurrency(c.profit, c.currency)}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right font-mono">
-                        <span className={c.margin >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      <TableCell className="text-right font-mono text-sm">
+                        <span className={cn(
+                          "inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium",
+                          c.margin >= 20 ? "bg-green-50 text-green-700" : c.margin >= 0 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"
+                        )}>
                           {c.margin.toFixed(1)}%
                         </span>
                       </TableCell>
@@ -426,7 +476,7 @@ export default function AnalysisHistory() {
                 </TableBody>
               </Table>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
@@ -436,79 +486,114 @@ export default function AnalysisHistory() {
           <p>{snapshots.length === 0 ? "No saved analysis snapshots yet. Go to Analyse and click 'Save Data' to create one." : "No snapshots match your search."}</p>
         </div>
       ) : (
-        <div className="border rounded-md bg-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="w-[40px] px-2">
-                    <Checkbox
-                      checked={baseFilteredSnapshots.length > 0 && baseFilteredSnapshots.every(s => selectedIds.has(s.id))}
-                      onCheckedChange={toggleAllVisible}
-                      data-testid="checkbox-select-all"
-                    />
-                  </TableHead>
-                  <TableHead className="min-w-[180px]">Period</TableHead>
-                  <TableHead className="min-w-[120px]">Country</TableHead>
-                  <TableHead className="text-right w-[100px]">Total Orders</TableHead>
-                  <TableHead className="text-right w-[100px]">Confirmed</TableHead>
-                  <TableHead className="text-right w-[100px]">Delivered</TableHead>
-                  <TableHead className="text-right w-[120px]">Revenue</TableHead>
-                  <TableHead className="text-right w-[120px]">Profit</TableHead>
-                  <TableHead className="text-right w-[80px]">Margin</TableHead>
-                  <TableHead className="text-right w-[120px]">Date</TableHead>
-                  <TableHead className="text-right w-[110px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredSnapshots.map((snapshot) => (
-                  <TableRow key={snapshot.id} data-testid={`row-snapshot-${snapshot.id}`}>
-                    <TableCell className="px-2">
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <History className="h-5 w-5 text-primary/60" />
+            Periods
+          </h3>
+          <Card className="shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gradient-to-r from-muted/60 to-muted/30 hover:from-muted/60 hover:to-muted/30">
+                    <TableHead className="w-[40px] px-2">
                       <Checkbox
-                        checked={selectedIds.has(snapshot.id)}
-                        onCheckedChange={() => toggleSelection(snapshot.id)}
-                        data-testid={`checkbox-snapshot-${snapshot.id}`}
+                        checked={baseFilteredSnapshots.length > 0 && baseFilteredSnapshots.every(s => selectedIds.has(s.id))}
+                        onCheckedChange={toggleAllVisible}
+                        data-testid="checkbox-select-all"
                       />
-                    </TableCell>
-                    <TableCell className="font-medium">{snapshot.periodName}</TableCell>
-                    <TableCell>
-                      <span className="text-muted-foreground">{snapshot.countryName}</span>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">{formatNumber(snapshot.totalOrders)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatNumber(snapshot.ordersConfirmed)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatNumber(snapshot.deliveredOrders)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(snapshot.totalRevenue, snapshot.currency)}</TableCell>
-                    <TableCell className="text-right font-mono">
-                      <span className={snapshot.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                        {formatCurrency(snapshot.profit, snapshot.currency)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      <span className={snapshot.margin >= 0 ? 'text-green-600' : 'text-red-600'}>
-                        {snapshot.margin.toFixed(1)}%
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
-                      {new Date(snapshot.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right p-1">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewSnapshot(snapshot)} data-testid={`button-view-snapshot-${snapshot.id}`}>
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(snapshot)} data-testid={`button-edit-snapshot-${snapshot.id}`}>
-                          <Pencil className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700" onClick={() => handleDelete(snapshot.id)} data-testid={`button-delete-snapshot-${snapshot.id}`}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    </TableHead>
+                    <SortableHeader label="Period" sortKey="periodName" currentSort={periodSort.sort} onSort={periodSort.handleSort} className="min-w-[180px]" />
+                    <SortableHeader label="Country" sortKey="countryName" currentSort={periodSort.sort} onSort={periodSort.handleSort} className="min-w-[120px]" />
+                    <SortableHeader label="Orders" sortKey="totalOrders" currentSort={periodSort.sort} onSort={periodSort.handleSort} className="text-right w-[90px]" />
+                    <SortableHeader label="Confirmed" sortKey="ordersConfirmed" currentSort={periodSort.sort} onSort={periodSort.handleSort} className="text-right w-[100px]" />
+                    <SortableHeader label="Conf. %" sortKey="confirmationRate" currentSort={periodSort.sort} onSort={periodSort.handleSort} className="text-right w-[85px]" />
+                    <SortableHeader label="Delivered" sortKey="deliveredOrders" currentSort={periodSort.sort} onSort={periodSort.handleSort} className="text-right w-[100px]" />
+                    <SortableHeader label="Del. %" sortKey="deliveryRate" currentSort={periodSort.sort} onSort={periodSort.handleSort} className="text-right w-[85px]" />
+                    <SortableHeader label="Revenue" sortKey="totalRevenue" currentSort={periodSort.sort} onSort={periodSort.handleSort} className="text-right w-[110px]" />
+                    <SortableHeader label="Profit" sortKey="profit" currentSort={periodSort.sort} onSort={periodSort.handleSort} className="text-right w-[110px]" />
+                    <SortableHeader label="Margin" sortKey="margin" currentSort={periodSort.sort} onSort={periodSort.handleSort} className="text-right w-[80px]" />
+                    <SortableHeader label="Date" sortKey="createdAtTs" currentSort={periodSort.sort} onSort={periodSort.handleSort} className="text-right w-[100px]" />
+                    <TableHead className="text-right w-[110px]"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {periodSort.sorted.map((snapshot, idx) => (
+                    <TableRow
+                      key={snapshot.id}
+                      className={cn(
+                        "transition-colors hover:bg-muted/40",
+                        idx % 2 === 0 ? "bg-background" : "bg-muted/10",
+                        selectedIds.has(snapshot.id) && "bg-blue-50/50 hover:bg-blue-50/70"
+                      )}
+                      data-testid={`row-snapshot-${snapshot.id}`}
+                    >
+                      <TableCell className="px-2">
+                        <Checkbox
+                          checked={selectedIds.has(snapshot.id)}
+                          onCheckedChange={() => toggleSelection(snapshot.id)}
+                          data-testid={`checkbox-snapshot-${snapshot.id}`}
+                        />
+                      </TableCell>
+                      <TableCell className="font-semibold">{snapshot.periodName}</TableCell>
+                      <TableCell>
+                        <span className="text-muted-foreground text-sm">{snapshot.countryName}</span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">{formatNumber(snapshot.totalOrders)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">{formatNumber(snapshot.ordersConfirmed)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        <span className={cn(
+                          "inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium",
+                          snapshot.confirmationRate >= 50 ? "bg-green-50 text-green-700" : snapshot.confirmationRate >= 30 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"
+                        )}>
+                          {snapshot.confirmationRate.toFixed(1)}%
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">{formatNumber(snapshot.deliveredOrders)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        <span className={cn(
+                          "inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium",
+                          snapshot.deliveryRate >= 80 ? "bg-green-50 text-green-700" : snapshot.deliveryRate >= 50 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"
+                        )}>
+                          {snapshot.deliveryRate.toFixed(1)}%
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">{formatCurrency(snapshot.totalRevenue, snapshot.currency)}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        <span className={cn("font-semibold", snapshot.profit >= 0 ? "text-green-600" : "text-red-600")}>
+                          {formatCurrency(snapshot.profit, snapshot.currency)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        <span className={cn(
+                          "inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium",
+                          snapshot.margin >= 20 ? "bg-green-50 text-green-700" : snapshot.margin >= 0 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"
+                        )}>
+                          {snapshot.margin.toFixed(1)}%
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
+                        {new Date(snapshot.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right p-1">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-50" onClick={() => setViewSnapshot(snapshot)} data-testid={`button-view-snapshot-${snapshot.id}`}>
+                            <Eye className="h-4 w-4 text-blue-500" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-amber-50" onClick={() => handleEdit(snapshot)} data-testid={`button-edit-snapshot-${snapshot.id}`}>
+                            <Pencil className="h-4 w-4 text-amber-500" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-red-50" onClick={() => handleDelete(snapshot.id)} data-testid={`button-delete-snapshot-${snapshot.id}`}>
+                            <Trash2 className="h-4 w-4 text-red-400" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
         </div>
       )}
 
@@ -524,7 +609,7 @@ export default function AnalysisHistory() {
           {viewSnapshot && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <Card className="p-3">
+                <Card className="p-3 shadow-sm">
                   <p className="text-xs font-medium text-muted-foreground">Total Profit</p>
                   <p className={`text-lg font-bold ${viewSnapshot.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {formatCurrency(viewSnapshot.profit, viewSnapshot.currency)}
@@ -533,50 +618,50 @@ export default function AnalysisHistory() {
                     {viewSnapshot.margin.toFixed(1)}% margin
                   </span>
                 </Card>
-                <Card className="p-3">
+                <Card className="p-3 shadow-sm">
                   <p className="text-xs font-medium text-muted-foreground">Total Orders</p>
                   <p className="text-lg font-bold">{formatNumber(viewSnapshot.totalOrders)}</p>
                 </Card>
-                <Card className="p-3">
+                <Card className="p-3 shadow-sm">
                   <p className="text-xs font-medium text-muted-foreground">Confirmed</p>
                   <p className="text-lg font-bold">{formatNumber(viewSnapshot.ordersConfirmed)}</p>
                   <span className="text-xs text-muted-foreground">
                     {viewSnapshot.totalOrders > 0 ? ((viewSnapshot.ordersConfirmed / viewSnapshot.totalOrders) * 100).toFixed(1) : 0}%
                   </span>
                 </Card>
-                <Card className="p-3">
+                <Card className="p-3 shadow-sm">
                   <p className="text-xs font-medium text-muted-foreground">Delivered</p>
                   <p className="text-lg font-bold">{formatNumber(viewSnapshot.deliveredOrders)}</p>
                   <span className="text-xs text-muted-foreground">
                     {viewSnapshot.ordersConfirmed > 0 ? ((viewSnapshot.deliveredOrders / viewSnapshot.ordersConfirmed) * 100).toFixed(1) : 0}%
                   </span>
                 </Card>
-                <Card className="p-3">
+                <Card className="p-3 shadow-sm">
                   <p className="text-xs font-medium text-muted-foreground">Total Spend</p>
                   <p className="text-lg font-bold">{formatCurrency(viewSnapshot.totalAds, viewSnapshot.currency)}</p>
                 </Card>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                <Card className="p-3">
+                <Card className="p-3 shadow-sm">
                   <p className="text-xs font-medium text-muted-foreground">Revenue</p>
                   <p className="text-lg font-bold">{formatCurrency(viewSnapshot.totalRevenue, viewSnapshot.currency)}</p>
                 </Card>
-                <Card className="p-3">
+                <Card className="p-3 shadow-sm">
                   <p className="text-xs font-medium text-muted-foreground">Service Fees</p>
                   <p className="text-lg font-bold">{formatCurrency(viewSnapshot.totalServiceFees, viewSnapshot.currency)}</p>
                 </Card>
-                <Card className="p-3">
+                <Card className="p-3 shadow-sm">
                   <p className="text-xs font-medium text-muted-foreground">Product Fees</p>
                   <p className="text-lg font-bold">{formatCurrency(viewSnapshot.totalProductFees, viewSnapshot.currency)}</p>
                 </Card>
-                <Card className="p-3">
+                <Card className="p-3 shadow-sm">
                   <p className="text-xs font-medium text-muted-foreground">CPA</p>
                   <p className="text-lg font-bold">
                     {viewSnapshot.totalOrders > 0 ? formatCurrency(viewSnapshot.totalAds / viewSnapshot.totalOrders, viewSnapshot.currency) : '-'}
                   </p>
                 </Card>
-                <Card className="p-3">
+                <Card className="p-3 shadow-sm">
                   <p className="text-xs font-medium text-muted-foreground">CPAD</p>
                   <p className="text-lg font-bold">
                     {viewSnapshot.deliveredOrders > 0 ? formatCurrency(viewSnapshot.totalAds / viewSnapshot.deliveredOrders, viewSnapshot.currency) : '-'}
@@ -584,21 +669,21 @@ export default function AnalysisHistory() {
                 </Card>
               </div>
 
-              <div className="border rounded-md bg-card overflow-hidden">
+              <Card className="shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableRow className="bg-gradient-to-r from-muted/60 to-muted/30 hover:from-muted/60 hover:to-muted/30">
                         <TableHead className="min-w-[180px]">Product</TableHead>
-                        <TableHead className="text-right">Total Orders</TableHead>
+                        <TableHead className="text-right">Orders</TableHead>
                         <TableHead className="text-right">Confirmed</TableHead>
-                        <TableHead className="text-right">Conf. Rate</TableHead>
+                        <TableHead className="text-right">Conf. %</TableHead>
                         <TableHead className="text-right">Delivered</TableHead>
-                        <TableHead className="text-right">Del. Rate</TableHead>
+                        <TableHead className="text-right">Del. %</TableHead>
                         <TableHead className="text-right">Revenue</TableHead>
                         <TableHead className="text-right">Ads</TableHead>
                         <TableHead className="text-right">Service Fees</TableHead>
-                        <TableHead className="text-right">Qty Delivery</TableHead>
+                        <TableHead className="text-right">Qty Del.</TableHead>
                         <TableHead className="text-right">Prod. Fees</TableHead>
                         <TableHead className="text-right">Profit</TableHead>
                         <TableHead className="text-right">Margin</TableHead>
@@ -606,28 +691,53 @@ export default function AnalysisHistory() {
                     </TableHeader>
                     <TableBody>
                       {viewSnapshot.snapshotData.map((row: SnapshotRow, index: number) => (
-                        <TableRow key={index} className={row.profit < 0 ? "bg-red-50" : ""} data-testid={`row-snapshot-product-${index}`}>
+                        <TableRow
+                          key={index}
+                          className={cn(
+                            "transition-colors hover:bg-muted/40",
+                            index % 2 === 0 ? "bg-background" : "bg-muted/10",
+                            row.profit < 0 && "bg-red-50/50"
+                          )}
+                          data-testid={`row-snapshot-product-${index}`}
+                        >
                           <TableCell>
-                            <div className="font-medium">{row.productName}</div>
+                            <div className="font-semibold">{row.productName}</div>
                             <div className="text-xs text-muted-foreground font-mono">{row.productSku}</div>
                           </TableCell>
-                          <TableCell className="text-right font-mono">{formatNumber(row.totalOrders)}</TableCell>
-                          <TableCell className="text-right font-mono">{formatNumber(row.ordersConfirmed)}</TableCell>
-                          <TableCell className="text-right font-mono">{row.confirmationRate.toFixed(1)}%</TableCell>
-                          <TableCell className="text-right font-mono">{formatNumber(row.deliveredOrders)}</TableCell>
-                          <TableCell className="text-right font-mono">{row.deliveryRate.toFixed(1)}%</TableCell>
-                          <TableCell className="text-right font-mono">{formatCurrency(row.revenue, viewSnapshot.currency)}</TableCell>
-                          <TableCell className="text-right font-mono">{formatCurrency(row.ads, viewSnapshot.currency)}</TableCell>
-                          <TableCell className="text-right font-mono">{formatCurrency(row.serviceFees, viewSnapshot.currency)}</TableCell>
-                          <TableCell className="text-right font-mono">{formatNumber(row.quantityDelivery)}</TableCell>
-                          <TableCell className="text-right font-mono">{formatCurrency(row.productFees, viewSnapshot.currency)}</TableCell>
-                          <TableCell className="text-right font-mono">
-                            <span className={row.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          <TableCell className="text-right font-mono text-sm">{formatNumber(row.totalOrders)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm">{formatNumber(row.ordersConfirmed)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            <span className={cn(
+                              "inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium",
+                              row.confirmationRate >= 50 ? "bg-green-50 text-green-700" : row.confirmationRate >= 30 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"
+                            )}>
+                              {row.confirmationRate.toFixed(1)}%
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">{formatNumber(row.deliveredOrders)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            <span className={cn(
+                              "inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium",
+                              row.deliveryRate >= 80 ? "bg-green-50 text-green-700" : row.deliveryRate >= 50 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"
+                            )}>
+                              {row.deliveryRate.toFixed(1)}%
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">{formatCurrency(row.revenue, viewSnapshot.currency)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm">{formatCurrency(row.ads, viewSnapshot.currency)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm">{formatCurrency(row.serviceFees, viewSnapshot.currency)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm">{formatNumber(row.quantityDelivery)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm">{formatCurrency(row.productFees, viewSnapshot.currency)}</TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            <span className={cn("font-semibold", row.profit >= 0 ? "text-green-600" : "text-red-600")}>
                               {formatCurrency(row.profit, viewSnapshot.currency)}
                             </span>
                           </TableCell>
-                          <TableCell className="text-right font-mono">
-                            <span className={row.margin >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          <TableCell className="text-right font-mono text-sm">
+                            <span className={cn(
+                              "inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium",
+                              row.margin >= 20 ? "bg-green-50 text-green-700" : row.margin >= 0 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"
+                            )}>
                               {row.margin.toFixed(1)}%
                             </span>
                           </TableCell>
@@ -636,7 +746,7 @@ export default function AnalysisHistory() {
                     </TableBody>
                   </Table>
                 </div>
-              </div>
+              </Card>
             </div>
           )}
         </DialogContent>
