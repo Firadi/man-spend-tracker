@@ -626,98 +626,69 @@ export default function Simulation() {
         </div>
       </div>
 
-      {/* Footer: CPD & CPA Breakdown */}
-      {results && (
-        <Card className="border-muted/30 shadow-lg bg-card/80 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-8 duration-700">
-          <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-muted/20">
-            <div>
-               <CardTitle className="text-blue-500 font-bold uppercase text-sm tracking-wider">Metrics Breakdown</CardTitle>
+      {/* Simulation History */}
+      <Card className="border-muted/30 shadow-lg bg-card/80 backdrop-blur-sm">
+        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-muted/20">
+          <div>
+            <CardTitle className="text-blue-500 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
+              <History className="w-4 h-4" /> Simulation History
+            </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">Your previously saved simulations.</p>
+          </div>
+          <Badge variant="outline" className="text-xs font-mono">
+            {simulations?.length || 0} saved
+          </Badge>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {!simulations?.length ? (
+            <div className="text-center py-10 text-muted-foreground">
+              <History className="w-12 h-12 mx-auto mb-3 opacity-20" />
+              <p className="font-medium">No saved simulations yet.</p>
+              <p className="text-sm opacity-60 mt-1">Calculate and save a simulation to see it here.</p>
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/20 px-3 py-1 rounded-full border border-muted/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              Live Conversion
+          ) : (
+            <div className="space-y-3">
+              {simulations.map((sim) => (
+                <div
+                  key={sim.id}
+                  className="group flex items-center justify-between p-4 rounded-xl border border-muted/40 bg-card hover:border-blue-500/30 hover:bg-muted/30 transition-all cursor-pointer"
+                  onClick={() => loadSimulation(sim)}
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-foreground group-hover:text-blue-500 transition-colors">{sim.name}</h4>
+                      <Badge variant="secondary" className="text-[10px] font-mono">
+                        {format(new Date(sim.date), 'MMM d, HH:mm')}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Package className="w-3 h-3" /> {sim.inputs.totalOrders} Orders
+                      </span>
+                      <span className={`flex items-center gap-1 font-medium ${sim.results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        <DollarSign className="w-3 h-3" /> Profit: {formatCurrency(sim.results.totalProfit, 'USD')}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button size="sm" variant="ghost" className="gap-1 text-xs">
+                      Load <ArrowUpRight className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                      onClick={(e) => handleDelete(sim.id, e)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-hidden">
-              <Table>
-                <TableHeader className="bg-muted/30">
-                  <TableRow className="hover:bg-transparent border-muted/20">
-                    <TableHead className="font-bold text-xs uppercase tracking-wider pl-6">Metric</TableHead>
-                    <TableHead className="font-bold text-xs uppercase tracking-wider">Formula</TableHead>
-                    <TableHead className="font-bold text-xs uppercase tracking-wider text-right pr-6">Value Analysis</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <TableRow className="border-muted/20 hover:bg-muted/5 transition-colors">
-                    <TableCell className="py-5 pl-6">
-                      <div className="font-bold text-sm">CPD</div>
-                      <div className="text-muted-foreground text-[10px] uppercase tracking-wide mt-0.5">Cost per Delivered</div>
-                    </TableCell>
-                    <TableCell className="font-mono text-muted-foreground py-5 text-xs">
-                      <span className="bg-muted/30 px-2 py-1 rounded border border-muted/30">
-                        {inputs.productCost} + {inputs.serviceFee}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right py-5 pr-6">
-                       <div className="font-bold text-lg">{formatCurrency(results.cpd, 'USD')}</div>
-                       <div className="text-muted-foreground text-[10px] font-mono mt-0.5">{formatKES(results.cpd)}</div>
-                    </TableCell>
-                  </TableRow>
-                  
-                  <TableRow className="border-muted/20 hover:bg-muted/5 transition-colors">
-                    <TableCell className="py-5 pl-6">
-                      <div className="font-bold text-sm">CPA</div>
-                      <div className="text-muted-foreground text-[10px] uppercase tracking-wide mt-0.5">Ads per Order</div>
-                    </TableCell>
-                    <TableCell className="font-mono text-muted-foreground py-5 text-xs">
-                      <span className="bg-muted/30 px-2 py-1 rounded border border-muted/30">
-                        {inputs.adsCost} ÷ {inputs.totalOrders}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right py-5 pr-6">
-                       <div className="font-bold text-lg">{formatCurrency(results.cpa, 'USD')}</div>
-                       <div className="text-muted-foreground text-[10px] font-mono mt-0.5">{formatKES(results.cpa)}</div>
-                    </TableCell>
-                  </TableRow>
-
-                  <TableRow className="border-muted/20 hover:bg-muted/5 transition-colors">
-                    <TableCell className="py-5 pl-6">
-                      <div className="font-bold text-sm">CPA (Delivered)</div>
-                      <div className="text-muted-foreground text-[10px] uppercase tracking-wide mt-0.5">Ads per Delivered</div>
-                    </TableCell>
-                    <TableCell className="font-mono text-muted-foreground py-5 text-xs">
-                      <span className="bg-muted/30 px-2 py-1 rounded border border-muted/30">
-                        {inputs.adsCost} ÷ {Math.round(results.deliveredOrders)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right py-5 pr-6">
-                       <div className="font-bold text-lg">{formatCurrency(results.cpaDelivered, 'USD')}</div>
-                       <div className="text-muted-foreground text-[10px] font-mono mt-0.5">{formatKES(results.cpaDelivered)}</div>
-                    </TableCell>
-                  </TableRow>
-
-                  <TableRow className="bg-blue-500/5 hover:bg-blue-500/10 border-0 transition-colors">
-                    <TableCell className="py-6 pl-6">
-                      <div className="font-bold text-blue-500 text-sm">Total Delivery Cost</div>
-                      <div className="text-blue-500/70 text-[10px] uppercase tracking-wide mt-0.5">Real Cost per Delivered</div>
-                    </TableCell>
-                    <TableCell className="font-mono text-muted-foreground py-6 text-xs">
-                      <span className="bg-background/50 px-2 py-1 rounded border border-muted/30 text-blue-500/80">
-                         CPD + CPA(delivered)
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right py-6 pr-6">
-                       <div className="font-black text-xl text-blue-500">{formatCurrency(results.tdc, 'USD')}</div>
-                       <div className="text-blue-500/70 text-[10px] font-mono mt-0.5">{formatKES(results.tdc)}</div>
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
