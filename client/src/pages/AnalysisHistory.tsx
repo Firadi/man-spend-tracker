@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, Trash2, History, Search, AlertCircle, Pencil, ShoppingCart, TrendingUp, CheckCircle, Truck, Target, DollarSign, BarChart3, Percent, Filter, Globe, ArrowUpDown, ArrowUp, ArrowDown, Megaphone } from "lucide-react";
+import { Eye, Trash2, History, Search, AlertCircle, Pencil, ShoppingCart, TrendingUp, CheckCircle, Truck, Target, DollarSign, BarChart3, Percent, Filter, Globe, ArrowUpDown, ArrowUp, ArrowDown, Megaphone, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
@@ -137,6 +137,9 @@ export default function AnalysisHistory() {
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [chartProductFilter, setChartProductFilter] = useState<string>("all");
+  const [chartDateFilter, setChartDateFilter] = useState<string>("last30");
+  const [chartCustomStart, setChartCustomStart] = useState("");
+  const [chartCustomEnd, setChartCustomEnd] = useState("");
   const [chartData, setChartData] = useState<any[]>([]);
   const [chartProducts, setChartProducts] = useState<{ id: string; name: string }[]>([]);
   const [chartLoading, setChartLoading] = useState(true);
@@ -160,16 +163,58 @@ export default function AnalysisHistory() {
     fetchSnapshots();
   }, []);
 
+  const getChartDateRange = useCallback(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    switch (chartDateFilter) {
+      case "thisWeek": {
+        const day = today.getDay();
+        const start = new Date(today);
+        start.setDate(start.getDate() - (day === 0 ? 6 : day - 1));
+        return { start: fmt(start), end: fmt(today) };
+      }
+      case "lastWeek": {
+        const day = today.getDay();
+        const thisMonday = new Date(today);
+        thisMonday.setDate(thisMonday.getDate() - (day === 0 ? 6 : day - 1));
+        const lastMonday = new Date(thisMonday);
+        lastMonday.setDate(lastMonday.getDate() - 7);
+        const lastSunday = new Date(thisMonday);
+        lastSunday.setDate(lastSunday.getDate() - 1);
+        return { start: fmt(lastMonday), end: fmt(lastSunday) };
+      }
+      case "thisMonth": {
+        const start = new Date(today.getFullYear(), today.getMonth(), 1);
+        return { start: fmt(start), end: fmt(today) };
+      }
+      case "lastMonth": {
+        const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const end = new Date(today.getFullYear(), today.getMonth(), 0);
+        return { start: fmt(start), end: fmt(end) };
+      }
+      case "custom": {
+        if (chartCustomStart && chartCustomEnd) {
+          return { start: chartCustomStart, end: chartCustomEnd };
+        }
+        const start = new Date(today);
+        start.setDate(start.getDate() - 29);
+        return { start: fmt(start), end: fmt(today) };
+      }
+      default: {
+        const start = new Date(today);
+        start.setDate(start.getDate() - 29);
+        return { start: fmt(start), end: fmt(today) };
+      }
+    }
+  }, [chartDateFilter, chartCustomStart, chartCustomEnd]);
+
   useEffect(() => {
     const fetchChartData = async () => {
       try {
         setChartLoading(true);
-        const now = new Date();
-        const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const start = new Date(end);
-        start.setDate(start.getDate() - 29);
-        const startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
-        const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+        const { start: startStr, end: endStr } = getChartDateRange();
 
         const res = await apiRequest("GET", `/api/daily-ads?startDate=${startStr}&endDate=${endStr}`);
         const rawData: { productId: string; date: string; amount: number }[] = await res.json();
@@ -182,6 +227,8 @@ export default function AnalysisHistory() {
           .map(p => ({ id: p.id, name: p.name }));
         setChartProducts(activeProducts);
 
+        const start = new Date(startStr + "T00:00:00");
+        const end = new Date(endStr + "T00:00:00");
         const dateMap = new Map<string, Record<string, number>>();
         const current = new Date(start);
         while (current <= end) {
@@ -221,7 +268,7 @@ export default function AnalysisHistory() {
     if (products.length > 0) {
       fetchChartData();
     }
-  }, [products]);
+  }, [products, getChartDateRange]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -478,113 +525,6 @@ export default function AnalysisHistory() {
         </div>
       )}
 
-      <Card className="shadow-sm overflow-hidden" data-testid="chart-daily-ads">
-        <div className="p-4 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Megaphone className="h-5 w-5 text-primary/60" />
-            Daily Ads Spend
-            <span className="text-xs font-normal text-muted-foreground">(Last 30 days)</span>
-          </h3>
-          <Select value={chartProductFilter} onValueChange={setChartProductFilter}>
-            <SelectTrigger className="w-[200px]" data-testid="select-chart-product-filter">
-              <SelectValue placeholder="All Products" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Products</SelectItem>
-              {chartProducts.map(p => (
-                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="p-4 pt-2">
-          {chartLoading ? (
-            <div className="flex items-center justify-center h-[280px] text-muted-foreground">
-              <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-            </div>
-          ) : chartData.length === 0 || chartProducts.length === 0 ? (
-            <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">
-              No ads data available for the last 30 days.
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <defs>
-                  {chartProductFilter === "all" ? (
-                    chartProducts.map((p, i) => (
-                      <linearGradient key={p.id} id={`gradient-${p.id}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_COLORS[i % CHART_COLORS.length]} stopOpacity={0.3} />
-                        <stop offset="95%" stopColor={CHART_COLORS[i % CHART_COLORS.length]} stopOpacity={0} />
-                      </linearGradient>
-                    ))
-                  ) : (
-                    <linearGradient id="gradient-single" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0} />
-                    </linearGradient>
-                  )}
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 11 }}
-                  className="text-muted-foreground"
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11 }}
-                  className="text-muted-foreground"
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) => `$${v}`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
-                  }}
-                  formatter={(value: number, name: string) => {
-                    const product = chartProducts.find(p => p.id === name);
-                    return [`$${value.toFixed(2)}`, product?.name || name];
-                  }}
-                  labelFormatter={(label) => `Date: ${label}`}
-                />
-                {chartProductFilter === "all" ? (
-                  chartProducts.map((p, i) => (
-                    <Area
-                      key={p.id}
-                      type="monotone"
-                      dataKey={p.id}
-                      name={p.id}
-                      stroke={CHART_COLORS[i % CHART_COLORS.length]}
-                      fill={`url(#gradient-${p.id})`}
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4, strokeWidth: 2 }}
-                    />
-                  ))
-                ) : (
-                  <Area
-                    type="monotone"
-                    dataKey={chartProductFilter}
-                    name={chartProductFilter}
-                    stroke="hsl(221, 83%, 53%)"
-                    fill="url(#gradient-single)"
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4, strokeWidth: 2 }}
-                  />
-                )}
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </Card>
-
       {countrySort.sorted.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -778,6 +718,149 @@ export default function AnalysisHistory() {
           </Card>
         </div>
       )}
+
+      <Card className="shadow-sm overflow-hidden" data-testid="chart-daily-ads">
+        <div className="p-4 pb-2 flex flex-col gap-3 border-b">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Megaphone className="h-5 w-5 text-primary/60" />
+              Daily Ads Spend
+            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={chartDateFilter} onValueChange={setChartDateFilter}>
+                <SelectTrigger className="w-[160px]" data-testid="select-chart-date-filter">
+                  <CalendarDays className="h-4 w-4 mr-1 text-muted-foreground" />
+                  <SelectValue placeholder="Last 30 days" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="last30">Last 30 days</SelectItem>
+                  <SelectItem value="thisWeek">This Week</SelectItem>
+                  <SelectItem value="lastWeek">Last Week</SelectItem>
+                  <SelectItem value="thisMonth">This Month</SelectItem>
+                  <SelectItem value="lastMonth">Last Month</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={chartProductFilter} onValueChange={setChartProductFilter}>
+                <SelectTrigger className="w-[180px]" data-testid="select-chart-product-filter">
+                  <SelectValue placeholder="All Products" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Products</SelectItem>
+                  {chartProducts.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {chartDateFilter === "custom" && (
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                value={chartCustomStart}
+                onChange={(e) => setChartCustomStart(e.target.value)}
+                className="w-[160px]"
+                data-testid="input-chart-custom-start"
+              />
+              <span className="text-sm text-muted-foreground">to</span>
+              <Input
+                type="date"
+                value={chartCustomEnd}
+                onChange={(e) => setChartCustomEnd(e.target.value)}
+                className="w-[160px]"
+                data-testid="input-chart-custom-end"
+              />
+            </div>
+          )}
+        </div>
+        <div className="p-4 pt-2">
+          {chartLoading ? (
+            <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+              <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+            </div>
+          ) : chartData.length === 0 || chartProducts.length === 0 ? (
+            <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">
+              No ads data available for this period.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <defs>
+                  {chartProductFilter === "all" ? (
+                    chartProducts.map((p, i) => (
+                      <linearGradient key={p.id} id={`gradient-${p.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS[i % CHART_COLORS.length]} stopOpacity={0.3} />
+                        <stop offset="95%" stopColor={CHART_COLORS[i % CHART_COLORS.length]} stopOpacity={0} />
+                      </linearGradient>
+                    ))
+                  ) : (
+                    <linearGradient id="gradient-single" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0} />
+                    </linearGradient>
+                  )}
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 11 }}
+                  className="text-muted-foreground"
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  className="text-muted-foreground"
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => `$${v}`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+                  }}
+                  formatter={(value: number, name: string) => {
+                    const product = chartProducts.find(p => p.id === name);
+                    return [`$${value.toFixed(2)}`, product?.name || name];
+                  }}
+                  labelFormatter={(label) => `Date: ${label}`}
+                />
+                {chartProductFilter === "all" ? (
+                  chartProducts.map((p, i) => (
+                    <Area
+                      key={p.id}
+                      type="monotone"
+                      dataKey={p.id}
+                      name={p.id}
+                      stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                      fill={`url(#gradient-${p.id})`}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4, strokeWidth: 2 }}
+                    />
+                  ))
+                ) : (
+                  <Area
+                    type="monotone"
+                    dataKey={chartProductFilter}
+                    name={chartProductFilter}
+                    stroke="hsl(221, 83%, 53%)"
+                    fill="url(#gradient-single)"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4, strokeWidth: 2 }}
+                  />
+                )}
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </Card>
 
       <Dialog open={!!viewSnapshot} onOpenChange={(open) => !open && setViewSnapshot(null)}>
         <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
