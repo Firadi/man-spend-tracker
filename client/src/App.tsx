@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/Layout";
-import Dashboard from "@/pages/Dashboard";
 import Analyse from "@/pages/Analyse";
 import Simulation from "@/pages/Simulation";
 import Products from "@/pages/Products";
@@ -52,13 +51,12 @@ function AppContent() {
   return (
     <Layout>
       <Switch>
-        <Route path="/" component={Dashboard} />
+        <Route path="/" component={AnalysisHistory} />
         <Route path="/analyse" component={Analyse} />
         <Route path="/daily-ads" component={DailyAdsTracker} />
         <Route path="/simulation" component={Simulation} />
         <Route path="/products" component={Products} />
         <Route path="/countries" component={Countries} />
-        <Route path="/history" component={AnalysisHistory} />
         <Route path="/admin" component={AdminPanel} />
         <Route component={NotFound} />
       </Switch>

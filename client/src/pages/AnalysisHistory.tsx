@@ -206,7 +206,7 @@ export default function AnalysisHistory() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <History className="h-8 w-8" />
-            Analysis History
+            Dashboard
           </h2>
           <p className="text-muted-foreground">Saved analysis snapshots for different periods.</p>
         </div>
