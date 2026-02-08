@@ -57,6 +57,26 @@ export const simulations = pgTable("simulations", {
   results: jsonb("results").notNull(),
 });
 
+export const analysisSnapshots = pgTable("analysis_snapshots", {
+  id: text("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  periodName: text("period_name").notNull(),
+  countryId: text("country_id").notNull(),
+  countryName: text("country_name").notNull(),
+  currency: text("currency").notNull(),
+  snapshotData: jsonb("snapshot_data").$type<any[]>().notNull(),
+  totalOrders: real("total_orders").default(0).notNull(),
+  ordersConfirmed: real("orders_confirmed").default(0).notNull(),
+  deliveredOrders: real("delivered_orders").default(0).notNull(),
+  totalRevenue: real("total_revenue").default(0).notNull(),
+  totalAds: real("total_ads").default(0).notNull(),
+  totalServiceFees: real("total_service_fees").default(0).notNull(),
+  totalProductFees: real("total_product_fees").default(0).notNull(),
+  profit: real("profit").default(0).notNull(),
+  margin: real("margin").default(0).notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
 export const dailyAds = pgTable("daily_ads", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
@@ -87,6 +107,10 @@ export const insertSimulationSchema = createInsertSchema(simulations).omit({
   userId: true 
 });
 
+export const insertAnalysisSnapshotSchema = createInsertSchema(analysisSnapshots).omit({
+  userId: true
+});
+
 export const insertDailyAdSchema = createInsertSchema(dailyAds).omit({
   id: true,
   userId: true
@@ -98,6 +122,7 @@ export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type InsertAnalysis = z.infer<typeof insertAnalysisSchema>;
 export type InsertSimulation = z.infer<typeof insertSimulationSchema>;
 export type InsertDailyAd = z.infer<typeof insertDailyAdSchema>;
+export type InsertAnalysisSnapshot = z.infer<typeof insertAnalysisSnapshotSchema>;
 
 export type User = typeof users.$inferSelect;
 export type Country = typeof countries.$inferSelect;
@@ -105,4 +130,5 @@ export type Product = typeof products.$inferSelect;
 export type Analysis = typeof analysis.$inferSelect;
 export type Simulation = typeof simulations.$inferSelect;
 export type DailyAd = typeof dailyAds.$inferSelect;
+export type AnalysisSnapshot = typeof analysisSnapshots.$inferSelect;
 

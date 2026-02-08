@@ -99,7 +99,7 @@ interface AppState {
   dailyAdsTotals: Record<string, number>;
   fetchDailyAds: (startDate: string, endDate: string) => Promise<void>;
   saveDailyAds: (entries: DailyAdEntry[]) => Promise<void>;
-  fetchDailyAdsTotals: () => Promise<void>;
+  fetchDailyAdsTotals: (startDate?: string, endDate?: string) => Promise<void>;
 
   columnOrder: string[];
   setColumnOrder: (order: string[]) => void;
@@ -290,9 +290,14 @@ export const useStore = create<AppState>((set, get) => ({
         get().fetchDailyAdsTotals();
       },
 
-      fetchDailyAdsTotals: async () => {
+      fetchDailyAdsTotals: async (startDate?: string, endDate?: string) => {
         try {
-          const res = await apiRequest("GET", "/api/daily-ads/totals");
+          let url = "/api/daily-ads/totals";
+          const params = new URLSearchParams();
+          if (startDate) params.set("startDate", startDate);
+          if (endDate) params.set("endDate", endDate);
+          if (params.toString()) url += `?${params.toString()}`;
+          const res = await apiRequest("GET", url);
           const data = await res.json();
           set({ dailyAdsTotals: data });
         } catch (error) {

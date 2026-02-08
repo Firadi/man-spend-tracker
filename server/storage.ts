@@ -1,8 +1,8 @@
-import { type User, type InsertUser, type Country, type InsertCountry, type Product, type InsertProduct, type Analysis, type Simulation, type InsertSimulation, type DailyAd, type InsertDailyAd, users, countries, products, analysis, simulations, dailyAds } from "@shared/schema";
+import { type User, type InsertUser, type Country, type InsertCountry, type Product, type InsertProduct, type Analysis, type Simulation, type InsertSimulation, type DailyAd, type InsertDailyAd, type AnalysisSnapshot, type InsertAnalysisSnapshot, users, countries, products, analysis, simulations, dailyAds, analysisSnapshots } from "@shared/schema";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { db, pool } from "./db";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq, and, gte, lte, sql, desc } from "drizzle-orm";
 
 const PostgresSessionStore = connectPg(session);
 
@@ -38,7 +38,12 @@ export interface IStorage {
   // Daily Ads
   getDailyAds(userId: number, startDate?: string, endDate?: string): Promise<DailyAd[]>;
   saveDailyAds(userId: number, entries: InsertDailyAd[]): Promise<DailyAd[]>;
-  getDailyAdsTotals(userId: number): Promise<{ productId: string; total: number }[]>;
+  getDailyAdsTotals(userId: number, startDate?: string, endDate?: string): Promise<{ productId: string; total: number }[]>;
+
+  // Analysis Snapshots
+  getAnalysisSnapshots(userId: number): Promise<AnalysisSnapshot[]>;
+  createAnalysisSnapshot(userId: number, snapshot: InsertAnalysisSnapshot): Promise<AnalysisSnapshot>;
+  deleteAnalysisSnapshot(userId: number, id: string): Promise<void>;
 
   sessionStore: session.Store;
 }
@@ -74,6 +79,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(id: number): Promise<void> {
     await db.delete(dailyAds).where(eq(dailyAds.userId, id));
+    await db.delete(analysisSnapshots).where(eq(analysisSnapshots.userId, id));
     await db.delete(analysis).where(eq(analysis.userId, id));
     await db.delete(simulations).where(eq(simulations.userId, id));
     await db.delete(products).where(eq(products.userId, id));
@@ -228,16 +234,32 @@ export class DatabaseStorage implements IStorage {
     return results;
   }
 
-  async getDailyAdsTotals(userId: number): Promise<{ productId: string; total: number }[]> {
+  async getDailyAdsTotals(userId: number, startDate?: string, endDate?: string): Promise<{ productId: string; total: number }[]> {
+    const conditions = [eq(dailyAds.userId, userId)];
+    if (startDate) conditions.push(gte(dailyAds.date, startDate));
+    if (endDate) conditions.push(lte(dailyAds.date, endDate));
     const result = await db
       .select({
         productId: dailyAds.productId,
         total: sql<number>`COALESCE(SUM(${dailyAds.amount}), 0)`.as('total'),
       })
       .from(dailyAds)
-      .where(eq(dailyAds.userId, userId))
+      .where(and(...conditions))
       .groupBy(dailyAds.productId);
     return result.map(r => ({ productId: r.productId, total: Number(r.total) }));
+  }
+
+  async getAnalysisSnapshots(userId: number): Promise<AnalysisSnapshot[]> {
+    return await db.select().from(analysisSnapshots).where(eq(analysisSnapshots.userId, userId)).orderBy(desc(analysisSnapshots.createdAt));
+  }
+
+  async createAnalysisSnapshot(userId: number, snapshot: InsertAnalysisSnapshot): Promise<AnalysisSnapshot> {
+    const [created] = await db.insert(analysisSnapshots).values({ ...snapshot, userId }).returning();
+    return created;
+  }
+
+  async deleteAnalysisSnapshot(userId: number, id: string): Promise<void> {
+    await db.delete(analysisSnapshots).where(and(eq(analysisSnapshots.id, id), eq(analysisSnapshots.userId, userId)));
   }
 }
 

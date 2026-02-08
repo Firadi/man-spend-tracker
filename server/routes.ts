@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { insertCountrySchema, insertProductSchema, insertAnalysisSchema, insertSimulationSchema, insertDailyAdSchema } from "@shared/schema";
+import { insertCountrySchema, insertProductSchema, insertAnalysisSchema, insertSimulationSchema, insertDailyAdSchema, insertAnalysisSnapshotSchema } from "@shared/schema";
 import { z } from "zod";
 
 function ensureAuthenticated(req: any, res: any, next: any) {
@@ -124,7 +124,12 @@ export async function registerRoutes(
   // Daily Ads
   app.get("/api/daily-ads/totals", ensureAuthenticated, async (req, res) => {
     const user = req.user as any;
-    const totals = await storage.getDailyAdsTotals(user.id);
+    const { startDate, endDate } = req.query;
+    const totals = await storage.getDailyAdsTotals(
+      user.id,
+      startDate as string | undefined,
+      endDate as string | undefined
+    );
     const map: Record<string, number> = {};
     for (const t of totals) {
       map[t.productId] = t.total;
@@ -148,6 +153,26 @@ export async function registerRoutes(
     const entries = z.array(insertDailyAdSchema).parse(req.body);
     const saved = await storage.saveDailyAds(user.id, entries);
     res.json(saved);
+  });
+
+  // Analysis Snapshots
+  app.get("/api/analysis-snapshots", ensureAuthenticated, async (req, res) => {
+    const user = req.user as any;
+    const snapshots = await storage.getAnalysisSnapshots(user.id);
+    res.json(snapshots);
+  });
+
+  app.post("/api/analysis-snapshots", ensureAuthenticated, async (req, res) => {
+    const user = req.user as any;
+    const data = insertAnalysisSnapshotSchema.parse(req.body);
+    const snapshot = await storage.createAnalysisSnapshot(user.id, data);
+    res.status(201).json(snapshot);
+  });
+
+  app.delete("/api/analysis-snapshots/:id", ensureAuthenticated, async (req, res) => {
+    const user = req.user as any;
+    await storage.deleteAnalysisSnapshot(user.id, req.params.id);
+    res.sendStatus(204);
   });
 
   // Admin Routes
