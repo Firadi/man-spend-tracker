@@ -37,6 +37,7 @@ const productSchema = z.object({
   status: z.enum(["Draft", "Active"]),
   cost: z.coerce.number().min(0).default(0),
   price: z.coerce.number().min(0).default(0),
+  countryIds: z.array(z.string()).default([]),
 });
 
 export default function Products() {
@@ -66,6 +67,7 @@ export default function Products() {
       status: "Draft",
       cost: 0,
       price: 0,
+      countryIds: [],
     },
   });
 
@@ -103,16 +105,17 @@ export default function Products() {
       status: product.status,
       cost: product.cost,
       price: product.price,
+      countryIds: product.countryIds || [],
     });
     setIsAddOpen(true);
   };
 
   const onSubmit = (data: z.infer<typeof productSchema>) => {
     if (editingId) {
-      updateProduct(editingId, { ...data, sku: data.sku || "" });
+      updateProduct(editingId, { ...data, sku: data.sku || "", countryIds: data.countryIds });
       toast({ title: "Product updated" });
     } else {
-      const assignCountryIds = countryFilter !== "all" && countryFilter !== "unassigned" ? [countryFilter] : [];
+      const assignCountryIds = data.countryIds.length > 0 ? data.countryIds : (countryFilter !== "all" && countryFilter !== "unassigned" ? [countryFilter] : []);
       addProduct({ ...data, sku: data.sku || "", countryIds: assignCountryIds });
       toast({ title: "Product added" });
     }
@@ -438,6 +441,48 @@ export default function Products() {
                         )}
                       />
                     </div>
+                    {countries.length > 0 && (
+                      <FormField
+                        control={form.control}
+                        name="countryIds"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Countries</FormLabel>
+                            <div className="border rounded-md p-3 space-y-2 max-h-[150px] overflow-y-auto">
+                              {countries.map(c => {
+                                const isChecked = field.value?.includes(c.id) || false;
+                                return (
+                                  <div key={c.id} className="flex items-center gap-2">
+                                    <Checkbox
+                                      checked={isChecked}
+                                      onCheckedChange={(checked) => {
+                                        if (checked) {
+                                          field.onChange([...(field.value || []), c.id]);
+                                        } else {
+                                          field.onChange((field.value || []).filter((id: string) => id !== c.id));
+                                        }
+                                      }}
+                                      data-testid={`checkbox-country-${c.id}`}
+                                    />
+                                    <label className="text-sm flex items-center gap-2 cursor-pointer">
+                                      {c.code && (
+                                        <img
+                                          src={`https://flagcdn.com/w20/${c.code.toLowerCase()}.png`}
+                                          alt={c.code}
+                                          className="h-3 w-auto rounded-sm border"
+                                        />
+                                      )}
+                                      {c.name} ({c.currency})
+                                    </label>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                     <Button type="submit" className="w-full">
                       {editingId ? "Save Changes" : "Create Product"}
                     </Button>
