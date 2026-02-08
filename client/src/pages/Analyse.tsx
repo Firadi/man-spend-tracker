@@ -97,7 +97,7 @@ const ALL_COLUMNS: Column[] = [
   { id: 'revenue', label: 'Revenue', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'ads', label: 'Ads', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'serviceFees', label: 'Service Fees', align: 'right', width: 'w-[140px]', editable: true },
-  { id: 'productFees', label: 'Prod. Fees', align: 'right', width: 'w-[140px]' },
+  { id: 'productFees', label: 'Prod. Fees', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'profit', label: 'Profit', align: 'right', width: 'w-[140px]' },
   { id: 'margin', label: 'Margin', align: 'right', width: 'w-[100px]' },
   { id: 'actions', label: '', align: 'right', width: 'w-[110px]' },
@@ -471,8 +471,11 @@ export default function Analyse() {
     }
 
     if (field === 'ads') {
+      const manualValue = analysis[activeCountryId]?.[productId]?.[field];
+      if (manualValue !== undefined && manualValue > 0) return manualValue;
       const dailyTotal = dailyAdsTotals[productId];
       if (dailyTotal !== undefined && dailyTotal > 0) return dailyTotal;
+      return 0;
     }
 
     if (field === 'serviceFees' && activeCountry) {
@@ -481,6 +484,12 @@ export default function Analyse() {
       const delivered = getAnalysisValue(productId, 'deliveredOrders');
       const feePerOrder = activeCountry.defaultShipping + activeCountry.defaultCod + activeCountry.defaultReturn;
       return delivered * feePerOrder;
+    }
+
+    if (field === 'productFees') {
+      const manualValue = analysis[activeCountryId]?.[productId]?.[field];
+      if (manualValue !== undefined && manualValue > 0) return manualValue;
+      return 0;
     }
 
     const override = analysis[activeCountryId]?.[productId]?.[field];
@@ -510,7 +519,8 @@ export default function Analyse() {
     const ads = getAnalysisValue(p.id, 'ads');
     const serviceFees = getAnalysisValue(p.id, 'serviceFees');
     const quantityDelivery = getAnalysisValue(p.id, 'quantityDelivery');
-    const productFees = quantityDelivery > 0 ? quantityDelivery * (p.cost || 0) : getAnalysisValue(p.id, 'productFees');
+    const manualProductFees = getAnalysisValue(p.id, 'productFees');
+    const productFees = manualProductFees > 0 ? manualProductFees : (quantityDelivery > 0 ? quantityDelivery * (p.cost || 0) : 0);
     const deliveredOrders = getAnalysisValue(p.id, 'deliveredOrders');
     
     // New Fields
@@ -704,12 +714,6 @@ export default function Analyse() {
                  <Save className="h-4 w-4 text-muted-foreground" />
                </Button>
              </div>
-          </TableCell>
-        );
-      case 'productFees':
-        return (
-          <TableCell key={columnId} className="text-right font-mono font-bold text-base px-2">
-            {formatNumber(row.productFees)}
           </TableCell>
         );
       case 'confirmationRate':
