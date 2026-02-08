@@ -17,8 +17,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, Trash2, History, Search, AlertCircle, Pencil, ShoppingCart, TrendingUp, CheckCircle, Truck, Target, DollarSign, BarChart3, Percent, Filter, Globe, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Eye, Trash2, History, Search, AlertCircle, Pencil, ShoppingCart, TrendingUp, CheckCircle, Truck, Target, DollarSign, BarChart3, Percent, Filter, Globe, ArrowUpDown, ArrowUp, ArrowDown, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 interface SnapshotRow {
   productId: string;
@@ -121,6 +122,13 @@ function useSorting<T>(data: T[], defaultSort?: SortConfig) {
   return { sort, handleSort, sorted };
 }
 
+const CHART_COLORS = [
+  "hsl(221, 83%, 53%)", "hsl(142, 71%, 45%)", "hsl(38, 92%, 50%)",
+  "hsl(0, 84%, 60%)", "hsl(262, 83%, 58%)", "hsl(199, 89%, 48%)",
+  "hsl(330, 81%, 60%)", "hsl(25, 95%, 53%)", "hsl(173, 80%, 40%)",
+  "hsl(47, 96%, 53%)",
+];
+
 export default function AnalysisHistory() {
   const [snapshots, setSnapshots] = useState<AnalysisSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,9 +136,13 @@ export default function AnalysisHistory() {
   const [searchQuery, setSearchQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [chartProductFilter, setChartProductFilter] = useState<string>("all");
+  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartProducts, setChartProducts] = useState<{ id: string; name: string }[]>([]);
+  const [chartLoading, setChartLoading] = useState(true);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const { setEditingSnapshot } = useStore();
+  const { setEditingSnapshot, products } = useStore();
 
   const fetchSnapshots = async () => {
     try {
@@ -147,6 +159,69 @@ export default function AnalysisHistory() {
   useEffect(() => {
     fetchSnapshots();
   }, []);
+
+  useEffect(() => {
+    const fetchChartData = async () => {
+      try {
+        setChartLoading(true);
+        const now = new Date();
+        const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const start = new Date(end);
+        start.setDate(start.getDate() - 29);
+        const startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+        const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+
+        const res = await apiRequest("GET", `/api/daily-ads?startDate=${startStr}&endDate=${endStr}`);
+        const rawData: { productId: string; date: string; amount: number }[] = await res.json();
+
+        const productIds = new Set<string>();
+        rawData.forEach(d => { if (d.amount > 0) productIds.add(d.productId); });
+
+        const activeProducts = products
+          .filter(p => productIds.has(p.id))
+          .map(p => ({ id: p.id, name: p.name }));
+        setChartProducts(activeProducts);
+
+        const dateMap = new Map<string, Record<string, number>>();
+        const current = new Date(start);
+        while (current <= end) {
+          const ds = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
+          dateMap.set(ds, {});
+          current.setDate(current.getDate() + 1);
+        }
+
+        rawData.forEach(d => {
+          const existing = dateMap.get(d.date);
+          if (existing) {
+            existing[d.productId] = (existing[d.productId] || 0) + d.amount;
+          }
+        });
+
+        const chartEntries = Array.from(dateMap.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, amounts]) => {
+            const d = new Date(date + "T00:00:00");
+            const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const entry: any = { date: label, fullDate: date, total: 0 };
+            activeProducts.forEach(p => {
+              entry[p.id] = amounts[p.id] || 0;
+              entry.total += amounts[p.id] || 0;
+            });
+            return entry;
+          });
+
+        setChartData(chartEntries);
+      } catch (error) {
+        console.error("Failed to fetch chart data:", error);
+      } finally {
+        setChartLoading(false);
+      }
+    };
+
+    if (products.length > 0) {
+      fetchChartData();
+    }
+  }, [products]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -402,6 +477,113 @@ export default function AnalysisHistory() {
           ))}
         </div>
       )}
+
+      <Card className="shadow-sm overflow-hidden" data-testid="chart-daily-ads">
+        <div className="p-4 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Megaphone className="h-5 w-5 text-primary/60" />
+            Daily Ads Spend
+            <span className="text-xs font-normal text-muted-foreground">(Last 30 days)</span>
+          </h3>
+          <Select value={chartProductFilter} onValueChange={setChartProductFilter}>
+            <SelectTrigger className="w-[200px]" data-testid="select-chart-product-filter">
+              <SelectValue placeholder="All Products" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Products</SelectItem>
+              {chartProducts.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="p-4 pt-2">
+          {chartLoading ? (
+            <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+              <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+            </div>
+          ) : chartData.length === 0 || chartProducts.length === 0 ? (
+            <div className="flex items-center justify-center h-[280px] text-muted-foreground text-sm">
+              No ads data available for the last 30 days.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <defs>
+                  {chartProductFilter === "all" ? (
+                    chartProducts.map((p, i) => (
+                      <linearGradient key={p.id} id={`gradient-${p.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS[i % CHART_COLORS.length]} stopOpacity={0.3} />
+                        <stop offset="95%" stopColor={CHART_COLORS[i % CHART_COLORS.length]} stopOpacity={0} />
+                      </linearGradient>
+                    ))
+                  ) : (
+                    <linearGradient id="gradient-single" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0} />
+                    </linearGradient>
+                  )}
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 11 }}
+                  className="text-muted-foreground"
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  className="text-muted-foreground"
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => `$${v}`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+                  }}
+                  formatter={(value: number, name: string) => {
+                    const product = chartProducts.find(p => p.id === name);
+                    return [`$${value.toFixed(2)}`, product?.name || name];
+                  }}
+                  labelFormatter={(label) => `Date: ${label}`}
+                />
+                {chartProductFilter === "all" ? (
+                  chartProducts.map((p, i) => (
+                    <Area
+                      key={p.id}
+                      type="monotone"
+                      dataKey={p.id}
+                      name={p.id}
+                      stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                      fill={`url(#gradient-${p.id})`}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4, strokeWidth: 2 }}
+                    />
+                  ))
+                ) : (
+                  <Area
+                    type="monotone"
+                    dataKey={chartProductFilter}
+                    name={chartProductFilter}
+                    stroke="hsl(221, 83%, 53%)"
+                    fill="url(#gradient-single)"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4, strokeWidth: 2 }}
+                  />
+                )}
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </Card>
 
       {countrySort.sorted.length > 0 && (
         <div className="space-y-3">
