@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -13,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, Trash2, History, Search, AlertCircle } from "lucide-react";
+import { Eye, Trash2, History, Search, AlertCircle, Pencil, ShoppingCart, TrendingUp, CheckCircle, Truck, Target, DollarSign, BarChart3, Percent } from "lucide-react";
 
 interface SnapshotRow {
   productId: string;
@@ -57,6 +58,9 @@ export default function AnalysisHistory() {
   const [snapshots, setSnapshots] = useState<AnalysisSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewSnapshot, setViewSnapshot] = useState<AnalysisSnapshot | null>(null);
+  const [editSnapshot, setEditSnapshot] = useState<AnalysisSnapshot | null>(null);
+  const [editName, setEditName] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
 
@@ -86,11 +90,56 @@ export default function AnalysisHistory() {
     }
   };
 
+  const handleEdit = (snapshot: AnalysisSnapshot) => {
+    setEditSnapshot(snapshot);
+    setEditName(snapshot.periodName);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editSnapshot || !editName.trim()) return;
+    setIsSavingEdit(true);
+    try {
+      const res = await apiRequest("PUT", `/api/analysis-snapshots/${editSnapshot.id}`, { periodName: editName.trim() });
+      const updated = await res.json();
+      setSnapshots(prev => prev.map(s => s.id === editSnapshot.id ? { ...s, periodName: updated.periodName } : s));
+      toast({ title: "Updated", description: "Period name updated." });
+      setEditSnapshot(null);
+    } catch (error) {
+      toast({ title: "Error", description: "Could not update snapshot.", variant: "destructive" });
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   const filteredSnapshots = snapshots.filter(s => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return s.periodName.toLowerCase().includes(q) || s.countryName.toLowerCase().includes(q);
   });
+
+  const summaryTotals = useMemo(() => {
+    if (filteredSnapshots.length === 0) return null;
+    const t = filteredSnapshots.reduce((acc, s) => ({
+      totalOrders: acc.totalOrders + s.totalOrders,
+      ordersConfirmed: acc.ordersConfirmed + s.ordersConfirmed,
+      deliveredOrders: acc.deliveredOrders + s.deliveredOrders,
+      totalAds: acc.totalAds + s.totalAds,
+      profit: acc.profit + s.profit,
+      totalRevenue: acc.totalRevenue + s.totalRevenue,
+      totalServiceFees: acc.totalServiceFees + s.totalServiceFees,
+      totalProductFees: acc.totalProductFees + s.totalProductFees,
+    }), { totalOrders: 0, ordersConfirmed: 0, deliveredOrders: 0, totalAds: 0, profit: 0, totalRevenue: 0, totalServiceFees: 0, totalProductFees: 0 });
+
+    const confirmationRate = t.totalOrders > 0 ? (t.ordersConfirmed / t.totalOrders) * 100 : 0;
+    const deliveryRate = t.ordersConfirmed > 0 ? (t.deliveredOrders / t.ordersConfirmed) * 100 : 0;
+    const cpa = t.totalOrders > 0 ? t.totalAds / t.totalOrders : 0;
+    const cpad = t.deliveredOrders > 0 ? t.totalAds / t.deliveredOrders : 0;
+    const cpd = t.deliveredOrders > 0 ? (t.totalAds + t.totalServiceFees + t.totalProductFees) / t.deliveredOrders : 0;
+
+    const currency = filteredSnapshots[0]?.currency || "USD";
+
+    return { ...t, confirmationRate, deliveryRate, cpa, cpad, cpd, currency };
+  }, [filteredSnapshots]);
 
   if (loading) {
     return (
@@ -123,6 +172,83 @@ export default function AnalysisHistory() {
         </div>
       </div>
 
+      {summaryTotals && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          <Card className="p-3" data-testid="card-total-profit">
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs font-medium text-muted-foreground">Total Profit</p>
+            </div>
+            <p className={`text-lg font-bold ${summaryTotals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(summaryTotals.profit, summaryTotals.currency)}
+            </p>
+          </Card>
+          <Card className="p-3" data-testid="card-total-orders">
+            <div className="flex items-center gap-2 mb-1">
+              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs font-medium text-muted-foreground">Total Orders</p>
+            </div>
+            <p className="text-lg font-bold">{formatNumber(summaryTotals.totalOrders)}</p>
+          </Card>
+          <Card className="p-3" data-testid="card-total-confirmed">
+            <div className="flex items-center gap-2 mb-1">
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs font-medium text-muted-foreground">Confirmed</p>
+            </div>
+            <p className="text-lg font-bold">{formatNumber(summaryTotals.ordersConfirmed)}</p>
+          </Card>
+          <Card className="p-3" data-testid="card-total-delivered">
+            <div className="flex items-center gap-2 mb-1">
+              <Truck className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs font-medium text-muted-foreground">Delivered</p>
+            </div>
+            <p className="text-lg font-bold">{formatNumber(summaryTotals.deliveredOrders)}</p>
+          </Card>
+          <Card className="p-3" data-testid="card-confirmation-rate">
+            <div className="flex items-center gap-2 mb-1">
+              <Percent className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs font-medium text-muted-foreground">Conf. Rate</p>
+            </div>
+            <p className="text-lg font-bold">{summaryTotals.confirmationRate.toFixed(1)}%</p>
+          </Card>
+          <Card className="p-3" data-testid="card-delivery-rate">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs font-medium text-muted-foreground">Delivery Rate</p>
+            </div>
+            <p className="text-lg font-bold">{summaryTotals.deliveryRate.toFixed(1)}%</p>
+          </Card>
+          <Card className="p-3" data-testid="card-total-spend">
+            <div className="flex items-center gap-2 mb-1">
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs font-medium text-muted-foreground">Total Spend</p>
+            </div>
+            <p className="text-lg font-bold">{formatCurrency(summaryTotals.totalAds, summaryTotals.currency)}</p>
+          </Card>
+          <Card className="p-3" data-testid="card-cpa">
+            <div className="flex items-center gap-2 mb-1">
+              <Target className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs font-medium text-muted-foreground">CPA</p>
+            </div>
+            <p className="text-lg font-bold">{summaryTotals.cpa > 0 ? formatCurrency(summaryTotals.cpa, summaryTotals.currency) : '-'}</p>
+          </Card>
+          <Card className="p-3" data-testid="card-cpad">
+            <div className="flex items-center gap-2 mb-1">
+              <Target className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs font-medium text-muted-foreground">CPAD</p>
+            </div>
+            <p className="text-lg font-bold">{summaryTotals.cpad > 0 ? formatCurrency(summaryTotals.cpad, summaryTotals.currency) : '-'}</p>
+          </Card>
+          <Card className="p-3" data-testid="card-cpd">
+            <div className="flex items-center gap-2 mb-1">
+              <Target className="h-4 w-4 text-muted-foreground" />
+              <p className="text-xs font-medium text-muted-foreground">CPD</p>
+            </div>
+            <p className="text-lg font-bold">{summaryTotals.cpd > 0 ? formatCurrency(summaryTotals.cpd, summaryTotals.currency) : '-'}</p>
+          </Card>
+        </div>
+      )}
+
       {filteredSnapshots.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-[40vh] text-muted-foreground">
           <AlertCircle className="w-10 h-10 mb-4" />
@@ -143,7 +269,7 @@ export default function AnalysisHistory() {
                   <TableHead className="text-right w-[120px]">Profit</TableHead>
                   <TableHead className="text-right w-[80px]">Margin</TableHead>
                   <TableHead className="text-right w-[120px]">Date</TableHead>
-                  <TableHead className="text-right w-[80px]"></TableHead>
+                  <TableHead className="text-right w-[110px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -175,6 +301,9 @@ export default function AnalysisHistory() {
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewSnapshot(snapshot)} data-testid={`button-view-snapshot-${snapshot.id}`}>
                           <Eye className="h-4 w-4 text-muted-foreground" />
                         </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(snapshot)} data-testid={`button-edit-snapshot-${snapshot.id}`}>
+                          <Pencil className="h-4 w-4 text-muted-foreground" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700" onClick={() => handleDelete(snapshot.id)} data-testid={`button-delete-snapshot-${snapshot.id}`}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -188,6 +317,37 @@ export default function AnalysisHistory() {
         </div>
       )}
 
+      <Dialog open={!!editSnapshot} onOpenChange={(open) => !open && setEditSnapshot(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Period Name</DialogTitle>
+            <DialogDescription>
+              Change the name for this saved analysis period.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-period-name">Period Name</Label>
+              <Input
+                id="edit-period-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="mt-1"
+                data-testid="input-edit-period-name"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditSnapshot(null)} data-testid="button-cancel-edit">
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={!editName.trim() || isSavingEdit} data-testid="button-confirm-edit">
+                {isSavingEdit ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!viewSnapshot} onOpenChange={(open) => !open && setViewSnapshot(null)}>
         <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -199,48 +359,64 @@ export default function AnalysisHistory() {
 
           {viewSnapshot && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
-                  <p className="text-2xl font-bold">{formatNumber(viewSnapshot.totalOrders)}</p>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <Card className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground">Total Profit</p>
+                  <p className={`text-lg font-bold ${viewSnapshot.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {formatCurrency(viewSnapshot.profit, viewSnapshot.currency)}
+                  </p>
+                  <span className={`text-xs ${viewSnapshot.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {viewSnapshot.margin.toFixed(1)}% margin
+                  </span>
                 </Card>
-                <Card className="p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Confirmed</p>
-                  <p className="text-2xl font-bold">{formatNumber(viewSnapshot.ordersConfirmed)}</p>
+                <Card className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground">Total Orders</p>
+                  <p className="text-lg font-bold">{formatNumber(viewSnapshot.totalOrders)}</p>
                 </Card>
-                <Card className="p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Delivered</p>
-                  <p className="text-2xl font-bold">{formatNumber(viewSnapshot.deliveredOrders)}</p>
+                <Card className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground">Confirmed</p>
+                  <p className="text-lg font-bold">{formatNumber(viewSnapshot.ordersConfirmed)}</p>
+                  <span className="text-xs text-muted-foreground">
+                    {viewSnapshot.totalOrders > 0 ? ((viewSnapshot.ordersConfirmed / viewSnapshot.totalOrders) * 100).toFixed(1) : 0}%
+                  </span>
                 </Card>
-                <Card className="p-4 bg-primary/5 border-primary/10">
-                  <p className="text-sm font-medium text-muted-foreground">Profit</p>
-                  <div className="flex items-baseline gap-2">
-                    <p className={`text-2xl font-bold ${viewSnapshot.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(viewSnapshot.profit, viewSnapshot.currency)}
-                    </p>
-                    <span className={`text-sm font-medium ${viewSnapshot.margin >= 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
-                      ({viewSnapshot.margin.toFixed(1)}%)
-                    </span>
-                  </div>
+                <Card className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground">Delivered</p>
+                  <p className="text-lg font-bold">{formatNumber(viewSnapshot.deliveredOrders)}</p>
+                  <span className="text-xs text-muted-foreground">
+                    {viewSnapshot.ordersConfirmed > 0 ? ((viewSnapshot.deliveredOrders / viewSnapshot.ordersConfirmed) * 100).toFixed(1) : 0}%
+                  </span>
+                </Card>
+                <Card className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground">Total Spend</p>
+                  <p className="text-lg font-bold">{formatCurrency(viewSnapshot.totalAds, viewSnapshot.currency)}</p>
                 </Card>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Revenue</p>
-                  <p className="text-xl font-bold">{formatCurrency(viewSnapshot.totalRevenue, viewSnapshot.currency)}</p>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <Card className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground">Revenue</p>
+                  <p className="text-lg font-bold">{formatCurrency(viewSnapshot.totalRevenue, viewSnapshot.currency)}</p>
                 </Card>
-                <Card className="p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Ads</p>
-                  <p className="text-xl font-bold">{formatCurrency(viewSnapshot.totalAds, viewSnapshot.currency)}</p>
+                <Card className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground">Service Fees</p>
+                  <p className="text-lg font-bold">{formatCurrency(viewSnapshot.totalServiceFees, viewSnapshot.currency)}</p>
                 </Card>
-                <Card className="p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Service Fees</p>
-                  <p className="text-xl font-bold">{formatCurrency(viewSnapshot.totalServiceFees, viewSnapshot.currency)}</p>
+                <Card className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground">Product Fees</p>
+                  <p className="text-lg font-bold">{formatCurrency(viewSnapshot.totalProductFees, viewSnapshot.currency)}</p>
                 </Card>
-                <Card className="p-4">
-                  <p className="text-sm font-medium text-muted-foreground">Product Fees</p>
-                  <p className="text-xl font-bold">{formatCurrency(viewSnapshot.totalProductFees, viewSnapshot.currency)}</p>
+                <Card className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground">CPA</p>
+                  <p className="text-lg font-bold">
+                    {viewSnapshot.totalOrders > 0 ? formatCurrency(viewSnapshot.totalAds / viewSnapshot.totalOrders, viewSnapshot.currency) : '-'}
+                  </p>
+                </Card>
+                <Card className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground">CPAD</p>
+                  <p className="text-lg font-bold">
+                    {viewSnapshot.deliveredOrders > 0 ? formatCurrency(viewSnapshot.totalAds / viewSnapshot.deliveredOrders, viewSnapshot.currency) : '-'}
+                  </p>
                 </Card>
               </div>
 

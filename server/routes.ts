@@ -169,6 +169,17 @@ export async function registerRoutes(
     res.status(201).json(snapshot);
   });
 
+  app.put("/api/analysis-snapshots/:id", ensureAuthenticated, async (req, res) => {
+    const user = req.user as any;
+    const { periodName } = req.body;
+    if (!periodName || typeof periodName !== 'string') {
+      return res.status(400).json({ error: "periodName is required" });
+    }
+    const updated = await storage.updateAnalysisSnapshot(user.id, req.params.id, { periodName: periodName.trim() });
+    if (!updated) return res.status(404).json({ error: "Snapshot not found" });
+    res.json(updated);
+  });
+
   app.delete("/api/analysis-snapshots/:id", ensureAuthenticated, async (req, res) => {
     const user = req.user as any;
     await storage.deleteAnalysisSnapshot(user.id, req.params.id);
