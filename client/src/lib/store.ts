@@ -36,6 +36,7 @@ export interface AnalysisOverride {
   ads?: number;
   serviceFees?: number;
   productFees?: number;
+  quantityDelivery?: number;
   deliveredOrders?: number;
   totalOrders?: number;
   ordersConfirmed?: number;
@@ -127,6 +128,7 @@ export const useStore = create<AppState>((set, get) => ({
         'revenue', 
         'ads', 
         'serviceFees', 
+        'quantityDelivery',
         'productFees', 
         'profit'
       ],

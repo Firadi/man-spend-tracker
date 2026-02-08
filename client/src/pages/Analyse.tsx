@@ -95,7 +95,8 @@ const ALL_COLUMNS: Column[] = [
   { id: 'revenue', label: 'Revenue', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'ads', label: 'Ads', align: 'right', width: 'w-[140px]', editable: true },
   { id: 'serviceFees', label: 'Service Fees', align: 'right', width: 'w-[140px]', editable: true },
-  { id: 'productFees', label: 'Prod. Fees', align: 'right', width: 'w-[140px]', editable: true },
+  { id: 'quantityDelivery', label: 'Qty Delivery', align: 'right', width: 'w-[120px]', editable: true },
+  { id: 'productFees', label: 'Prod. Fees', align: 'right', width: 'w-[140px]' },
   { id: 'profit', label: 'Profit', align: 'right', width: 'w-[140px]' },
   { id: 'margin', label: 'Margin', align: 'right', width: 'w-[100px]' },
   { id: 'actions', label: '', align: 'right', width: 'w-[110px]' },
@@ -200,6 +201,7 @@ export default function Analyse() {
       'Revenue': row.revenue,
       'Ads': row.ads,
       'Service Fees': row.serviceFees,
+      'Qty Delivery': row.quantityDelivery,
       'Product Fees': row.productFees,
       'Profit': row.profit,
       'Margin': `${row.margin.toFixed(1)}%`
@@ -218,6 +220,7 @@ export default function Analyse() {
       'Revenue': totals.revenue,
       'Ads': totals.ads,
       'Service Fees': totals.serviceFees,
+      'Qty Delivery': totals.quantityDelivery,
       'Product Fees': totals.productFees,
       'Profit': totals.profit,
       'Margin': `${globalMargin.toFixed(1)}%`
@@ -337,7 +340,7 @@ export default function Analyse() {
     return statusMatch && countryMatch;
   });
 
-  const getAnalysisValue = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'deliveredOrders' | 'totalOrders' | 'ordersConfirmed'): number => {
+  const getAnalysisValue = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'quantityDelivery' | 'deliveredOrders' | 'totalOrders' | 'ordersConfirmed'): number => {
     if (!activeCountryId) return 0;
 
     if (field === 'ads') {
@@ -358,7 +361,7 @@ export default function Analyse() {
     return 0;
   };
 
-  const handleUpdate = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'deliveredOrders' | 'totalOrders' | 'ordersConfirmed', value: string) => {
+  const handleUpdate = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'quantityDelivery' | 'deliveredOrders' | 'totalOrders' | 'ordersConfirmed', value: string) => {
     if (!activeCountryId) return;
     const numValue = parseFloat(value) || 0;
     updateAnalysis(activeCountryId, productId, { [field]: numValue });
@@ -369,7 +372,8 @@ export default function Analyse() {
     const revenue = getAnalysisValue(p.id, 'revenue');
     const ads = getAnalysisValue(p.id, 'ads');
     const serviceFees = getAnalysisValue(p.id, 'serviceFees');
-    const productFees = getAnalysisValue(p.id, 'productFees');
+    const quantityDelivery = getAnalysisValue(p.id, 'quantityDelivery');
+    const productFees = quantityDelivery > 0 ? quantityDelivery * (p.cost || 0) : getAnalysisValue(p.id, 'productFees');
     const deliveredOrders = getAnalysisValue(p.id, 'deliveredOrders');
     
     // New Fields
@@ -391,6 +395,7 @@ export default function Analyse() {
       revenue,
       ads,
       serviceFees,
+      quantityDelivery,
       productFees,
       deliveredOrders,
       totalOrders,
@@ -419,12 +424,13 @@ export default function Analyse() {
     revenue: acc.revenue + row.revenue,
     ads: acc.ads + row.ads,
     serviceFees: acc.serviceFees + row.serviceFees,
+    quantityDelivery: acc.quantityDelivery + row.quantityDelivery,
     productFees: acc.productFees + row.productFees,
     deliveredOrders: acc.deliveredOrders + row.deliveredOrders,
     totalOrders: acc.totalOrders + row.totalOrders,
     ordersConfirmed: acc.ordersConfirmed + row.ordersConfirmed,
     profit: acc.profit + row.profit,
-  }), { revenue: 0, ads: 0, serviceFees: 0, productFees: 0, deliveredOrders: 0, totalOrders: 0, ordersConfirmed: 0, profit: 0 });
+  }), { revenue: 0, ads: 0, serviceFees: 0, quantityDelivery: 0, productFees: 0, deliveredOrders: 0, totalOrders: 0, ordersConfirmed: 0, profit: 0 });
 
   // Calculate Global Rates
   const globalConfirmationRate = totals.totalOrders > 0 ? (totals.ordersConfirmed / totals.totalOrders) * 100 : 0;
@@ -501,6 +507,7 @@ export default function Analyse() {
       addMetric("Revenue", formatCurrency(row.revenue, activeCountry?.currency || 'USD'));
       addMetric("Ads Cost", formatCurrency(row.ads, activeCountry?.currency || 'USD'));
       addMetric("Service Fees", formatCurrency(row.serviceFees, activeCountry?.currency || 'USD'));
+      addMetric("Qty Delivery", formatNumber(row.quantityDelivery));
       addMetric("Product Fees", formatCurrency(row.productFees, activeCountry?.currency || 'USD'));
       
       y += 5;
@@ -560,6 +567,12 @@ export default function Analyse() {
                  <Save className="h-4 w-4 text-muted-foreground" />
                </Button>
              </div>
+          </TableCell>
+        );
+      case 'productFees':
+        return (
+          <TableCell key={columnId} className="text-right font-mono font-bold text-base px-2">
+            {formatNumber(row.productFees)}
           </TableCell>
         );
       case 'confirmationRate':
@@ -995,7 +1008,7 @@ export default function Analyse() {
                         <TableCell className="text-right text-muted-foreground">{formatCurrency(viewProduct.serviceFees, activeCountry?.currency || 'USD')}</TableCell>
                      </TableRow>
                      <TableRow>
-                        <TableCell className="font-medium text-muted-foreground pl-6">- Product Fees</TableCell>
+                        <TableCell className="font-medium text-muted-foreground pl-6">- Product Fees ({formatNumber(viewProduct.quantityDelivery)} x {formatCurrency(viewProduct.product?.cost || 0, activeCountry?.currency || 'USD')})</TableCell>
                         <TableCell className="text-right text-muted-foreground">{formatCurrency(viewProduct.productFees, activeCountry?.currency || 'USD')}</TableCell>
                      </TableRow>
                      <TableRow className="font-bold bg-muted/50">
