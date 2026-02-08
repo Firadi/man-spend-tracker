@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useStore, Product } from "@/lib/store";
+import { apiRequest } from "@/lib/queryClient";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -7,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AlertCircle, GripHorizontal, Save, Eye, Download, FileSpreadsheet, FileImage, FileType, Search, Filter } from "lucide-react";
+import { AlertCircle, GripHorizontal, Save, Eye, Download, FileSpreadsheet, FileImage, FileType, Search, Filter, Calendar, BookmarkPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -177,13 +178,89 @@ function SortableHeader({ id, column }: { id: string, column: Column }) {
 }
 
 export default function Analyse() {
-  const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder, updateCountry, dailyAdsTotals } = useStore();
+  const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder, updateCountry, dailyAdsTotals, fetchDailyAdsTotals } = useStore();
   const [selectedCountryId, setSelectedCountryId] = useState<string>(countries[0]?.id || "");
   const [showDrafts, setShowDrafts] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [profitFilter, setProfitFilter] = useState<'all' | 'profitable' | 'loss'>('all');
   const [viewProduct, setViewProduct] = useState<any | null>(null);
+  const [dateStartFilter, setDateStartFilter] = useState("");
+  const [dateEndFilter, setDateEndFilter] = useState("");
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [periodName, setPeriodName] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+
+  const handleDateFilter = useCallback(() => {
+    if (dateStartFilter && dateEndFilter) {
+      fetchDailyAdsTotals(dateStartFilter, dateEndFilter);
+    } else {
+      fetchDailyAdsTotals();
+    }
+  }, [dateStartFilter, dateEndFilter, fetchDailyAdsTotals]);
+
+  useEffect(() => {
+    handleDateFilter();
+  }, [handleDateFilter]);
+
+  const handleClearDateFilter = () => {
+    setDateStartFilter("");
+    setDateEndFilter("");
+  };
+
+  const handleSaveSnapshot = async () => {
+    if (!periodName.trim() || !activeCountry) return;
+    setIsSaving(true);
+    try {
+      const snapshotData = rows.map(row => ({
+        productId: row.product.id,
+        productName: row.product.name,
+        productSku: row.product.sku,
+        totalOrders: row.totalOrders,
+        ordersConfirmed: row.ordersConfirmed,
+        confirmationRate: row.confirmationRate,
+        deliveredOrders: row.deliveredOrders,
+        deliveryRate: row.deliveryRate,
+        deliveryRatePerLead: row.deliveryRatePerLead,
+        revenue: row.revenue,
+        ads: row.ads,
+        serviceFees: row.serviceFees,
+        quantityDelivery: row.quantityDelivery,
+        productFees: row.productFees,
+        profit: row.profit,
+        margin: row.margin,
+      }));
+
+      const id = crypto.randomUUID();
+      await apiRequest("POST", "/api/analysis-snapshots", {
+        id,
+        periodName: periodName.trim(),
+        countryId: activeCountry.id,
+        countryName: activeCountry.name,
+        currency: activeCountry.currency,
+        snapshotData,
+        totalOrders: totals.totalOrders,
+        ordersConfirmed: totals.ordersConfirmed,
+        deliveredOrders: totals.deliveredOrders,
+        totalRevenue: totals.revenue,
+        totalAds: totals.ads,
+        totalServiceFees: totals.serviceFees,
+        totalProductFees: totals.productFees,
+        profit: totals.profit,
+        margin: globalMargin,
+        createdAt: new Date().toISOString(),
+      });
+
+      toast({ title: "Saved!", description: `Analysis saved as "${periodName.trim()}".` });
+      setPeriodName("");
+      setShowSaveDialog(false);
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Error", description: "Could not save analysis data.", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleExportExcel = () => {
     if (!activeCountry) return;
@@ -702,6 +779,11 @@ export default function Analyse() {
               </SelectContent>
             </Select>
 
+            <Button variant="default" size="sm" className="h-9 gap-1" onClick={() => setShowSaveDialog(true)} data-testid="button-save-snapshot">
+              <BookmarkPlus className="h-4 w-4" />
+              <span className="hidden sm:inline">Save Data</span>
+            </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-9 gap-1">
@@ -753,6 +835,30 @@ export default function Analyse() {
                  <SelectItem value="loss">Loss Only</SelectItem>
                </SelectContent>
              </Select>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto ml-auto">
+            <Calendar className="h-4 w-4 text-muted-foreground hidden sm:block" />
+            <Input
+              type="date"
+              className="w-[150px] h-9"
+              value={dateStartFilter}
+              onChange={(e) => setDateStartFilter(e.target.value)}
+              data-testid="input-date-start"
+            />
+            <span className="text-muted-foreground text-sm">to</span>
+            <Input
+              type="date"
+              className="w-[150px] h-9"
+              value={dateEndFilter}
+              onChange={(e) => setDateEndFilter(e.target.value)}
+              data-testid="input-date-end"
+            />
+            {(dateStartFilter || dateEndFilter) && (
+              <Button variant="ghost" size="sm" className="h-9 px-2 text-muted-foreground" onClick={handleClearDateFilter} data-testid="button-clear-date-filter">
+                Clear
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -901,6 +1007,43 @@ export default function Analyse() {
           </div>
         </DndContext>
       </div>
+
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Save Analysis Data</DialogTitle>
+            <DialogDescription>
+              Save the current analysis data for {activeCountry?.name} as a period snapshot. You can view it later in the History page.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="period-name">Period Name</Label>
+              <Input
+                id="period-name"
+                placeholder="e.g. January 2026, Week 1, Q1..."
+                value={periodName}
+                onChange={(e) => setPeriodName(e.target.value)}
+                className="mt-1"
+                data-testid="input-period-name"
+              />
+            </div>
+            {dateStartFilter && dateEndFilter && (
+              <p className="text-sm text-muted-foreground">
+                Date filter active: {dateStartFilter} to {dateEndFilter}
+              </p>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowSaveDialog(false)} data-testid="button-cancel-save">
+                Cancel
+              </Button>
+              <Button onClick={handleSaveSnapshot} disabled={!periodName.trim() || isSaving} data-testid="button-confirm-save">
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!viewProduct} onOpenChange={(open) => !open && setViewProduct(null)}>
         <DialogContent className="max-w-2xl">

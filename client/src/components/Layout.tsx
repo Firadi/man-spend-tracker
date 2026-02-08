@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, LineChart, Package, Globe, Settings, Menu, PanelLeft, PanelLeftClose, Calculator, Megaphone, LogOut, Shield } from "lucide-react";
+import { LayoutDashboard, LineChart, Package, Globe, Settings, Menu, PanelLeft, PanelLeftClose, Calculator, Megaphone, LogOut, Shield, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
   { name: 'Analyse', path: '/analyse', icon: LineChart },
+  { name: 'History', path: '/history', icon: History },
   { name: 'Daily Ads', path: '/daily-ads', icon: Megaphone },
   { name: 'Simulation', path: '/simulation', icon: Calculator },
   { name: 'Products', path: '/products', icon: Package },

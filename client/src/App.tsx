@@ -12,6 +12,7 @@ import Products from "@/pages/Products";
 import Countries from "@/pages/Countries";
 import DailyAdsTracker from "@/pages/DailyAdsTracker";
 import AdminPanel from "@/pages/AdminPanel";
+import AnalysisHistory from "@/pages/AnalysisHistory";
 import AuthPage from "@/pages/AuthPage";
 import { useStore } from "@/lib/store";
 import { useEffect } from "react";
@@ -57,6 +58,7 @@ function AppContent() {
         <Route path="/simulation" component={Simulation} />
         <Route path="/products" component={Products} />
         <Route path="/countries" component={Countries} />
+        <Route path="/history" component={AnalysisHistory} />
         <Route path="/admin" component={AdminPanel} />
         <Route component={NotFound} />
       </Switch>
