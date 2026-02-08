@@ -31,6 +31,7 @@ export default function Simulation() {
     sellingPrice: 46,
     productCost: 20,
     serviceFee: 5.7,
+    costPerLead: 0,
     adsCost: 310,
     otherCost: 0
   });
@@ -55,10 +56,18 @@ export default function Simulation() {
   }>(null);
 
   const handleInputChange = (field: string, value: string) => {
-    setInputs(prev => ({
-      ...prev,
-      [field]: value === '' ? 0 : parseFloat(value)
-    }));
+    const numVal = value === '' ? 0 : parseFloat(value);
+    setInputs(prev => {
+      const next = { ...prev, [field]: numVal };
+      if (field === 'costPerLead') {
+        next.adsCost = parseFloat((numVal * prev.totalOrders).toFixed(2));
+      } else if (field === 'adsCost') {
+        next.costPerLead = prev.totalOrders > 0 ? parseFloat((numVal / prev.totalOrders).toFixed(4)) : 0;
+      } else if (field === 'totalOrders') {
+        next.adsCost = parseFloat((prev.costPerLead * numVal).toFixed(2));
+      }
+      return next;
+    });
   };
 
   const calculate = () => {
@@ -110,6 +119,7 @@ export default function Simulation() {
       sellingPrice: 0,
       productCost: 0,
       serviceFee: 5.7,
+      costPerLead: 0,
       adsCost: 0,
       otherCost: 0
     });
@@ -380,6 +390,23 @@ export default function Simulation() {
                   </div>
 
                   <div className="space-y-2 col-span-2 md:col-span-1">
+                    <Label htmlFor="costPerLead" className="text-foreground font-medium text-xs uppercase tracking-wide">Cost per Lead (USD)</Label>
+                    <Input 
+                      id="costPerLead" 
+                      type="number" 
+                      step="0.01"
+                      value={inputs.costPerLead || ''}
+                      onChange={(e) => handleInputChange('costPerLead', e.target.value)}
+                      placeholder="0"
+                      className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-blue-500/50"
+                      data-testid="input-cost-per-lead"
+                    />
+                    <p className="text-[10px] text-muted-foreground font-mono">
+                      {inputs.totalOrders > 0 ? `${inputs.costPerLead} × ${inputs.totalOrders} orders` : 'Set total orders first'}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 col-span-2 md:col-span-1">
                     <Label htmlFor="adsCost" className="text-foreground font-medium text-xs uppercase tracking-wide">Total Ads Cost (USD)</Label>
                     <Input 
                       id="adsCost" 
@@ -388,7 +415,11 @@ export default function Simulation() {
                       onChange={(e) => handleInputChange('adsCost', e.target.value)}
                       placeholder="0"
                       className="bg-muted/30 border-muted-foreground/20 h-10 focus-visible:ring-blue-500/50"
+                      data-testid="input-ads-cost"
                     />
+                    <p className="text-[10px] text-blue-500/70 font-mono">
+                      Auto-calculated from CPL × Orders
+                    </p>
                   </div>
 
                   <div className="space-y-2 col-span-2 md:col-span-1">
