@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -15,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, Trash2, History, Search, AlertCircle, Pencil, ShoppingCart, TrendingUp, CheckCircle, Truck, Target, DollarSign, BarChart3, Percent } from "lucide-react";
+import { Eye, Trash2, History, Search, AlertCircle, Pencil, ShoppingCart, TrendingUp, CheckCircle, Truck, Target, DollarSign, BarChart3, Percent, Filter } from "lucide-react";
 
 interface SnapshotRow {
   productId: string;
@@ -60,6 +62,8 @@ export default function AnalysisHistory() {
   const [loading, setLoading] = useState(true);
   const [viewSnapshot, setViewSnapshot] = useState<AnalysisSnapshot | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [countryFilter, setCountryFilter] = useState<string>("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const { setEditingSnapshot } = useStore();
@@ -114,11 +118,55 @@ export default function AnalysisHistory() {
     setLocation("/analyse");
   };
 
-  const filteredSnapshots = snapshots.filter(s => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return s.periodName.toLowerCase().includes(q) || s.countryName.toLowerCase().includes(q);
-  });
+  const availableCountries = useMemo(() => {
+    const countryMap = new Map<string, { id: string; name: string }>();
+    snapshots.forEach(s => {
+      if (!countryMap.has(s.countryId)) {
+        countryMap.set(s.countryId, { id: s.countryId, name: s.countryName });
+      }
+    });
+    return Array.from(countryMap.values());
+  }, [snapshots]);
+
+  const baseFilteredSnapshots = useMemo(() => {
+    return snapshots.filter(s => {
+      if (countryFilter !== "all" && s.countryId !== countryFilter) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        if (!s.periodName.toLowerCase().includes(q) && !s.countryName.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [snapshots, countryFilter, searchQuery]);
+
+  const filteredSnapshots = useMemo(() => {
+    if (selectedIds.size === 0) return baseFilteredSnapshots;
+    return baseFilteredSnapshots.filter(s => selectedIds.has(s.id));
+  }, [baseFilteredSnapshots, selectedIds]);
+
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleAllVisible = () => {
+    const visibleIds = baseFilteredSnapshots.map(s => s.id);
+    const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(visibleIds));
+    }
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
 
   const summaryTotals = useMemo(() => {
     if (filteredSnapshots.length === 0) return null;
@@ -162,18 +210,45 @@ export default function AnalysisHistory() {
           </h2>
           <p className="text-muted-foreground">Saved analysis snapshots for different periods.</p>
         </div>
-        <div className="relative w-full sm:w-[300px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search periods..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            data-testid="input-search-history"
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          {availableCountries.length > 1 && (
+            <Select value={countryFilter} onValueChange={setCountryFilter}>
+              <SelectTrigger className="w-[180px]" data-testid="select-country-filter">
+                <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="All Countries" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Countries</SelectItem>
+                {availableCountries.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <div className="relative w-full sm:w-[250px]">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search periods..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              data-testid="input-search-history"
+            />
+          </div>
         </div>
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-2 px-3 bg-blue-50 border border-blue-200 rounded-lg" data-testid="selection-indicator">
+          <span className="text-sm font-medium text-blue-800">
+            {selectedIds.size} period{selectedIds.size > 1 ? 's' : ''} selected
+          </span>
+          <Button variant="ghost" size="sm" className="h-7 text-xs text-blue-600 hover:text-blue-800" onClick={clearSelection} data-testid="button-clear-selection">
+            Clear selection
+          </Button>
+        </div>
+      )}
 
       {summaryTotals && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
@@ -263,6 +338,13 @@ export default function AnalysisHistory() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableHead className="w-[40px] px-2">
+                    <Checkbox
+                      checked={baseFilteredSnapshots.length > 0 && baseFilteredSnapshots.every(s => selectedIds.has(s.id))}
+                      onCheckedChange={toggleAllVisible}
+                      data-testid="checkbox-select-all"
+                    />
+                  </TableHead>
                   <TableHead className="min-w-[180px]">Period</TableHead>
                   <TableHead className="min-w-[120px]">Country</TableHead>
                   <TableHead className="text-right w-[100px]">Total Orders</TableHead>
@@ -278,6 +360,13 @@ export default function AnalysisHistory() {
               <TableBody>
                 {filteredSnapshots.map((snapshot) => (
                   <TableRow key={snapshot.id} data-testid={`row-snapshot-${snapshot.id}`}>
+                    <TableCell className="px-2">
+                      <Checkbox
+                        checked={selectedIds.has(snapshot.id)}
+                        onCheckedChange={() => toggleSelection(snapshot.id)}
+                        data-testid={`checkbox-snapshot-${snapshot.id}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{snapshot.periodName}</TableCell>
                     <TableCell>
                       <span className="text-muted-foreground">{snapshot.countryName}</span>
