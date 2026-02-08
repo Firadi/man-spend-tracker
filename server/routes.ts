@@ -171,11 +171,11 @@ export async function registerRoutes(
 
   app.put("/api/analysis-snapshots/:id", ensureAuthenticated, async (req, res) => {
     const user = req.user as any;
-    const { periodName } = req.body;
-    if (!periodName || typeof periodName !== 'string') {
-      return res.status(400).json({ error: "periodName is required" });
+    const data = req.body;
+    if (!data || typeof data !== 'object') {
+      return res.status(400).json({ error: "Update data is required" });
     }
-    const updated = await storage.updateAnalysisSnapshot(user.id, req.params.id, { periodName: periodName.trim() });
+    const updated = await storage.updateAnalysisSnapshot(user.id, req.params.id, data);
     if (!updated) return res.status(404).json({ error: "Snapshot not found" });
     res.json(updated);
   });

@@ -189,6 +189,7 @@ export default function Analyse() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [periodName, setPeriodName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [editOverrides, setEditOverrides] = useState<Record<string, Record<string, number>>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -196,8 +197,9 @@ export default function Analyse() {
       setSelectedCountryId(editingSnapshot.countryId);
       setPeriodName(editingSnapshot.periodName);
       
+      const overrides: Record<string, Record<string, number>> = {};
       for (const row of editingSnapshot.snapshotData) {
-        updateAnalysis(editingSnapshot.countryId, row.productId, {
+        overrides[row.productId] = {
           totalOrders: row.totalOrders,
           ordersConfirmed: row.ordersConfirmed,
           deliveredOrders: row.deliveredOrders,
@@ -206,8 +208,9 @@ export default function Analyse() {
           serviceFees: row.serviceFees,
           quantityDelivery: row.quantityDelivery,
           productFees: row.productFees,
-        });
+        };
       }
+      setEditOverrides(overrides);
     }
   }, []);
 
@@ -252,9 +255,7 @@ export default function Analyse() {
       }));
 
       if (editingSnapshot) {
-        await apiRequest("DELETE", `/api/analysis-snapshots/${editingSnapshot.id}`);
-        await apiRequest("POST", "/api/analysis-snapshots", {
-          id: editingSnapshot.id,
+        await apiRequest("PUT", `/api/analysis-snapshots/${editingSnapshot.id}`, {
           periodName: periodName.trim(),
           countryId: activeCountry.id,
           countryName: activeCountry.name,
@@ -269,10 +270,10 @@ export default function Analyse() {
           totalProductFees: totals.productFees,
           profit: totals.profit,
           margin: globalMargin,
-          createdAt: new Date().toISOString(),
         });
         toast({ title: "Updated!", description: `Analysis "${periodName.trim()}" updated.` });
         setEditingSnapshot(null);
+        setEditOverrides({});
       } else {
         const id = crypto.randomUUID();
         await apiRequest("POST", "/api/analysis-snapshots", {
@@ -463,6 +464,12 @@ export default function Analyse() {
   const getAnalysisValue = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'quantityDelivery' | 'deliveredOrders' | 'totalOrders' | 'ordersConfirmed'): number => {
     if (!activeCountryId) return 0;
 
+    if (editingSnapshot && editOverrides[productId] !== undefined) {
+      const val = editOverrides[productId][field];
+      if (val !== undefined) return val;
+      return 0;
+    }
+
     if (field === 'ads') {
       const dailyTotal = dailyAdsTotals[productId];
       if (dailyTotal !== undefined && dailyTotal > 0) return dailyTotal;
@@ -484,7 +491,17 @@ export default function Analyse() {
   const handleUpdate = (productId: string, field: 'revenue' | 'ads' | 'serviceFees' | 'productFees' | 'quantityDelivery' | 'deliveredOrders' | 'totalOrders' | 'ordersConfirmed', value: string) => {
     if (!activeCountryId) return;
     const numValue = parseFloat(value) || 0;
-    updateAnalysis(activeCountryId, productId, { [field]: numValue });
+    if (editingSnapshot) {
+      setEditOverrides(prev => ({
+        ...prev,
+        [productId]: {
+          ...(prev[productId] || {}),
+          [field]: numValue,
+        }
+      }));
+    } else {
+      updateAnalysis(activeCountryId, productId, { [field]: numValue });
+    }
   };
 
   // Calculations
@@ -800,7 +817,7 @@ export default function Analyse() {
               <Save className="h-3.5 w-3.5" />
               Update
             </Button>
-            <Button size="sm" variant="ghost" className="h-8 gap-1 text-muted-foreground" onClick={() => setEditingSnapshot(null)} data-testid="button-cancel-edit">
+            <Button size="sm" variant="ghost" className="h-8 gap-1 text-muted-foreground" onClick={() => { setEditingSnapshot(null); setEditOverrides({}); setPeriodName(""); }} data-testid="button-cancel-edit">
               <X className="h-3.5 w-3.5" />
               Cancel
             </Button>

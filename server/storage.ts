@@ -258,8 +258,8 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateAnalysisSnapshot(userId: number, id: string, data: { periodName: string }): Promise<AnalysisSnapshot | null> {
-    const [updated] = await db.update(analysisSnapshots).set({ periodName: data.periodName }).where(and(eq(analysisSnapshots.id, id), eq(analysisSnapshots.userId, userId))).returning();
+  async updateAnalysisSnapshot(userId: number, id: string, data: Partial<InsertAnalysisSnapshot>): Promise<AnalysisSnapshot | null> {
+    const [updated] = await db.update(analysisSnapshots).set(data).where(and(eq(analysisSnapshots.id, id), eq(analysisSnapshots.userId, userId))).returning();
     return updated || null;
   }
 
