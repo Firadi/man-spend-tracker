@@ -522,72 +522,85 @@ export default function Simulation() {
                       </div>
                     </div>
 
-                    {/* Orders Row */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-xl border border-muted/30 bg-muted/5 p-4">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mb-2">Confirmed Orders</p>
-                        <div className="flex items-baseline gap-2">
-                          <Input
-                            type="number"
-                            value={results.confirmedOrders || ''}
-                            min={0}
-                            max={inputs.totalOrders}
-                            onChange={(e) => {
-                              let val = parseFloat(e.target.value) || 0;
-                              if (val > inputs.totalOrders) val = inputs.totalOrders;
-                              if (val < 0) val = 0;
-                              const newRate = inputs.totalOrders > 0 ? parseFloat(((val / inputs.totalOrders) * 100).toFixed(2)) : 0;
-                              const newDelivered = (val * inputs.deliveryRate) / 100;
-                              setInputs(prev => ({ ...prev, confirmationRate: newRate }));
-                              setResults(prev => prev ? { ...prev, confirmedOrders: val, deliveredOrders: newDelivered } : prev);
-                            }}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
-                            className="text-3xl font-black tabular-nums bg-transparent border-none p-0 h-auto w-24 focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            data-testid="input-confirmed-orders"
-                          />
-                          <span className="text-xs text-muted-foreground font-mono bg-muted/30 px-2 py-0.5 rounded-full">{inputs.confirmationRate}%</span>
+                    {/* Orders + Revenue + Costs */}
+                    <div className="rounded-2xl border border-muted/20 bg-gradient-to-b from-muted/10 to-muted/5 p-5 space-y-5">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                              <CheckCircle className="w-3.5 h-3.5 text-blue-500" />
+                            </div>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Confirmed</p>
+                          </div>
+                          <div className="flex items-baseline gap-3">
+                            <Input
+                              type="number"
+                              value={results.confirmedOrders || ''}
+                              min={0}
+                              max={inputs.totalOrders}
+                              onChange={(e) => {
+                                let val = parseFloat(e.target.value) || 0;
+                                if (val > inputs.totalOrders) val = inputs.totalOrders;
+                                if (val < 0) val = 0;
+                                const newRate = inputs.totalOrders > 0 ? parseFloat(((val / inputs.totalOrders) * 100).toFixed(2)) : 0;
+                                const newDelivered = (val * inputs.deliveryRate) / 100;
+                                setInputs(prev => ({ ...prev, confirmationRate: newRate }));
+                                setResults(prev => prev ? { ...prev, confirmedOrders: val, deliveredOrders: newDelivered } : prev);
+                              }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
+                              className="text-4xl font-black tabular-nums bg-transparent border-none p-0 h-auto w-28 focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              data-testid="input-confirmed-orders"
+                            />
+                            <span className="text-sm font-bold text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-lg">{inputs.confirmationRate}%</span>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                              <Truck className="w-3.5 h-3.5 text-purple-500" />
+                            </div>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Delivered</p>
+                          </div>
+                          <div className="flex items-baseline gap-3">
+                            <Input
+                              type="number"
+                              value={results.deliveredOrders || ''}
+                              min={0}
+                              max={results.confirmedOrders}
+                              onChange={(e) => {
+                                let val = parseFloat(e.target.value) || 0;
+                                if (val > results.confirmedOrders) val = results.confirmedOrders;
+                                if (val < 0) val = 0;
+                                const newRate = results.confirmedOrders > 0 ? parseFloat(((val / results.confirmedOrders) * 100).toFixed(2)) : 0;
+                                setInputs(prev => ({ ...prev, deliveryRate: newRate }));
+                                setResults(prev => prev ? { ...prev, deliveredOrders: val } : prev);
+                              }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
+                              className="text-4xl font-black tabular-nums bg-transparent border-none p-0 h-auto w-28 focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              data-testid="input-delivered-orders"
+                            />
+                            <span className="text-sm font-bold text-purple-500 bg-purple-500/10 px-2.5 py-1 rounded-lg">{inputs.deliveryRate}%</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="rounded-xl border border-muted/30 bg-muted/5 p-4">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold mb-2">Delivered Orders</p>
-                        <div className="flex items-baseline gap-2">
-                          <Input
-                            type="number"
-                            value={results.deliveredOrders || ''}
-                            min={0}
-                            max={results.confirmedOrders}
-                            onChange={(e) => {
-                              let val = parseFloat(e.target.value) || 0;
-                              if (val > results.confirmedOrders) val = results.confirmedOrders;
-                              if (val < 0) val = 0;
-                              const newRate = results.confirmedOrders > 0 ? parseFloat(((val / results.confirmedOrders) * 100).toFixed(2)) : 0;
-                              setInputs(prev => ({ ...prev, deliveryRate: newRate }));
-                              setResults(prev => prev ? { ...prev, deliveredOrders: val } : prev);
-                            }}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
-                            className="text-3xl font-black tabular-nums bg-transparent border-none p-0 h-auto w-24 focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            data-testid="input-delivered-orders"
-                          />
-                          <span className="text-xs text-muted-foreground font-mono bg-muted/30 px-2 py-0.5 rounded-full">{inputs.deliveryRate}%</span>
-                        </div>
-                      </div>
-                    </div>
 
-                    {/* Revenue & Costs */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-xl border border-muted/30 bg-muted/5 p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Revenue</p>
-                          <TrendingUp className="w-3.5 h-3.5 text-green-500/60" />
+                      <div className="h-px bg-muted/20" />
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <TrendingUp className="w-4 h-4 text-green-500" />
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Revenue</p>
+                          </div>
+                          <p className="text-3xl font-black tabular-nums text-foreground">{formatCurrency(results.totalRevenue, 'USD')}</p>
                         </div>
-                        <p className="text-2xl font-black tabular-nums text-foreground">{formatCurrency(results.totalRevenue, 'USD')}</p>
-                      </div>
-                      <div className="rounded-xl border border-muted/30 bg-muted/5 p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Costs</p>
-                          <TrendingDown className="w-3.5 h-3.5 text-red-500/60" />
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <TrendingDown className="w-4 h-4 text-red-500" />
+                            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Costs</p>
+                          </div>
+                          <p className="text-3xl font-black tabular-nums text-red-400">-{formatCurrency(results.totalCosts, 'USD')}</p>
                         </div>
-                        <p className="text-2xl font-black tabular-nums text-red-400">-{formatCurrency(results.totalCosts, 'USD')}</p>
                       </div>
                     </div>
 
