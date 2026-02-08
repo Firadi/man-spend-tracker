@@ -106,8 +106,32 @@ interface AppState {
 
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
+
+  editingSnapshot: EditingSnapshot | null;
+  setEditingSnapshot: (snapshot: EditingSnapshot | null) => void;
   
   seed: () => void;
+}
+
+export interface EditingSnapshot {
+  id: string;
+  periodName: string;
+  countryId: string;
+  countryName: string;
+  currency: string;
+  snapshotData: {
+    productId: string;
+    productName: string;
+    productSku: string;
+    totalOrders: number;
+    ordersConfirmed: number;
+    deliveredOrders: number;
+    revenue: number;
+    ads: number;
+    serviceFees: number;
+    quantityDelivery: number;
+    productFees: number;
+  }[];
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -133,6 +157,8 @@ export const useStore = create<AppState>((set, get) => ({
         'profit'
       ],
       sidebarCollapsed: false,
+      editingSnapshot: null,
+      setEditingSnapshot: (snapshot) => set({ editingSnapshot: snapshot }),
 
       fetchData: async () => {
         try {

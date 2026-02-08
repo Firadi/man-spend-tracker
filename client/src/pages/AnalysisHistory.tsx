@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
+import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
+import { useStore } from "@/lib/store";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -58,11 +59,10 @@ export default function AnalysisHistory() {
   const [snapshots, setSnapshots] = useState<AnalysisSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewSnapshot, setViewSnapshot] = useState<AnalysisSnapshot | null>(null);
-  const [editSnapshot, setEditSnapshot] = useState<AnalysisSnapshot | null>(null);
-  const [editName, setEditName] = useState("");
-  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const { setEditingSnapshot } = useStore();
 
   const fetchSnapshots = async () => {
     try {
@@ -91,24 +91,27 @@ export default function AnalysisHistory() {
   };
 
   const handleEdit = (snapshot: AnalysisSnapshot) => {
-    setEditSnapshot(snapshot);
-    setEditName(snapshot.periodName);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editSnapshot || !editName.trim()) return;
-    setIsSavingEdit(true);
-    try {
-      const res = await apiRequest("PUT", `/api/analysis-snapshots/${editSnapshot.id}`, { periodName: editName.trim() });
-      const updated = await res.json();
-      setSnapshots(prev => prev.map(s => s.id === editSnapshot.id ? { ...s, periodName: updated.periodName } : s));
-      toast({ title: "Updated", description: "Period name updated." });
-      setEditSnapshot(null);
-    } catch (error) {
-      toast({ title: "Error", description: "Could not update snapshot.", variant: "destructive" });
-    } finally {
-      setIsSavingEdit(false);
-    }
+    setEditingSnapshot({
+      id: snapshot.id,
+      periodName: snapshot.periodName,
+      countryId: snapshot.countryId,
+      countryName: snapshot.countryName,
+      currency: snapshot.currency,
+      snapshotData: snapshot.snapshotData.map(row => ({
+        productId: row.productId,
+        productName: row.productName,
+        productSku: row.productSku,
+        totalOrders: row.totalOrders,
+        ordersConfirmed: row.ordersConfirmed,
+        deliveredOrders: row.deliveredOrders,
+        revenue: row.revenue,
+        ads: row.ads,
+        serviceFees: row.serviceFees,
+        quantityDelivery: row.quantityDelivery,
+        productFees: row.productFees,
+      })),
+    });
+    setLocation("/analyse");
   };
 
   const filteredSnapshots = snapshots.filter(s => {
@@ -316,37 +319,6 @@ export default function AnalysisHistory() {
           </div>
         </div>
       )}
-
-      <Dialog open={!!editSnapshot} onOpenChange={(open) => !open && setEditSnapshot(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Period Name</DialogTitle>
-            <DialogDescription>
-              Change the name for this saved analysis period.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="edit-period-name">Period Name</Label>
-              <Input
-                id="edit-period-name"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="mt-1"
-                data-testid="input-edit-period-name"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setEditSnapshot(null)} data-testid="button-cancel-edit">
-                Cancel
-              </Button>
-              <Button onClick={handleSaveEdit} disabled={!editName.trim() || isSavingEdit} data-testid="button-confirm-edit">
-                {isSavingEdit ? "Saving..." : "Save"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={!!viewSnapshot} onOpenChange={(open) => !open && setViewSnapshot(null)}>
         <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">

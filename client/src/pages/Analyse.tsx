@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { AlertCircle, GripHorizontal, Save, Eye, Download, FileSpreadsheet, FileImage, FileType, Search, Filter, Calendar, BookmarkPlus } from "lucide-react";
+import { AlertCircle, GripHorizontal, Save, Eye, Download, FileSpreadsheet, FileImage, FileType, Search, Filter, Calendar, BookmarkPlus, X, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -178,7 +178,7 @@ function SortableHeader({ id, column }: { id: string, column: Column }) {
 }
 
 export default function Analyse() {
-  const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder, updateCountry, dailyAdsTotals, fetchDailyAdsTotals } = useStore();
+  const { countries, products, analysis, updateAnalysis, columnOrder, setColumnOrder, updateCountry, dailyAdsTotals, fetchDailyAdsTotals, editingSnapshot, setEditingSnapshot } = useStore();
   const [selectedCountryId, setSelectedCountryId] = useState<string>(countries[0]?.id || "");
   const [showDrafts, setShowDrafts] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -190,6 +190,26 @@ export default function Analyse() {
   const [periodName, setPeriodName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (editingSnapshot) {
+      setSelectedCountryId(editingSnapshot.countryId);
+      setPeriodName(editingSnapshot.periodName);
+      
+      for (const row of editingSnapshot.snapshotData) {
+        updateAnalysis(editingSnapshot.countryId, row.productId, {
+          totalOrders: row.totalOrders,
+          ordersConfirmed: row.ordersConfirmed,
+          deliveredOrders: row.deliveredOrders,
+          revenue: row.revenue,
+          ads: row.ads,
+          serviceFees: row.serviceFees,
+          quantityDelivery: row.quantityDelivery,
+          productFees: row.productFees,
+        });
+      }
+    }
+  }, []);
 
   const handleDateFilter = useCallback(() => {
     if (dateStartFilter && dateEndFilter) {
@@ -231,27 +251,50 @@ export default function Analyse() {
         margin: row.margin,
       }));
 
-      const id = crypto.randomUUID();
-      await apiRequest("POST", "/api/analysis-snapshots", {
-        id,
-        periodName: periodName.trim(),
-        countryId: activeCountry.id,
-        countryName: activeCountry.name,
-        currency: activeCountry.currency,
-        snapshotData,
-        totalOrders: totals.totalOrders,
-        ordersConfirmed: totals.ordersConfirmed,
-        deliveredOrders: totals.deliveredOrders,
-        totalRevenue: totals.revenue,
-        totalAds: totals.ads,
-        totalServiceFees: totals.serviceFees,
-        totalProductFees: totals.productFees,
-        profit: totals.profit,
-        margin: globalMargin,
-        createdAt: new Date().toISOString(),
-      });
-
-      toast({ title: "Saved!", description: `Analysis saved as "${periodName.trim()}".` });
+      if (editingSnapshot) {
+        await apiRequest("DELETE", `/api/analysis-snapshots/${editingSnapshot.id}`);
+        await apiRequest("POST", "/api/analysis-snapshots", {
+          id: editingSnapshot.id,
+          periodName: periodName.trim(),
+          countryId: activeCountry.id,
+          countryName: activeCountry.name,
+          currency: activeCountry.currency,
+          snapshotData,
+          totalOrders: totals.totalOrders,
+          ordersConfirmed: totals.ordersConfirmed,
+          deliveredOrders: totals.deliveredOrders,
+          totalRevenue: totals.revenue,
+          totalAds: totals.ads,
+          totalServiceFees: totals.serviceFees,
+          totalProductFees: totals.productFees,
+          profit: totals.profit,
+          margin: globalMargin,
+          createdAt: new Date().toISOString(),
+        });
+        toast({ title: "Updated!", description: `Analysis "${periodName.trim()}" updated.` });
+        setEditingSnapshot(null);
+      } else {
+        const id = crypto.randomUUID();
+        await apiRequest("POST", "/api/analysis-snapshots", {
+          id,
+          periodName: periodName.trim(),
+          countryId: activeCountry.id,
+          countryName: activeCountry.name,
+          currency: activeCountry.currency,
+          snapshotData,
+          totalOrders: totals.totalOrders,
+          ordersConfirmed: totals.ordersConfirmed,
+          deliveredOrders: totals.deliveredOrders,
+          totalRevenue: totals.revenue,
+          totalAds: totals.ads,
+          totalServiceFees: totals.serviceFees,
+          totalProductFees: totals.productFees,
+          profit: totals.profit,
+          margin: globalMargin,
+          createdAt: new Date().toISOString(),
+        });
+        toast({ title: "Saved!", description: `Analysis saved as "${periodName.trim()}".` });
+      }
       setPeriodName("");
       setShowSaveDialog(false);
     } catch (error) {
@@ -744,6 +787,27 @@ export default function Analyse() {
 
   return (
     <div className="space-y-6">
+      {editingSnapshot && (
+        <div className="flex items-center justify-between gap-4 p-3 bg-blue-50 border border-blue-200 rounded-lg" data-testid="editing-banner">
+          <div className="flex items-center gap-2">
+            <Pencil className="h-4 w-4 text-blue-600" />
+            <span className="text-sm font-medium text-blue-800">
+              Editing: <strong>{editingSnapshot.periodName}</strong>
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="default" className="h-8 gap-1" onClick={() => setShowSaveDialog(true)} data-testid="button-update-snapshot">
+              <Save className="h-3.5 w-3.5" />
+              Update
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 gap-1 text-muted-foreground" onClick={() => setEditingSnapshot(null)} data-testid="button-cancel-edit">
+              <X className="h-3.5 w-3.5" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -1011,9 +1075,12 @@ export default function Analyse() {
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Save Analysis Data</DialogTitle>
+            <DialogTitle>{editingSnapshot ? "Update Analysis Data" : "Save Analysis Data"}</DialogTitle>
             <DialogDescription>
-              Save the current analysis data for {activeCountry?.name} as a period snapshot. You can view it later in the History page.
+              {editingSnapshot
+                ? `Update the analysis data for "${editingSnapshot.periodName}".`
+                : `Save the current analysis data for ${activeCountry?.name} as a period snapshot. You can view it later in the History page.`
+              }
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1038,7 +1105,7 @@ export default function Analyse() {
                 Cancel
               </Button>
               <Button onClick={handleSaveSnapshot} disabled={!periodName.trim() || isSaving} data-testid="button-confirm-save">
-                {isSaving ? "Saving..." : "Save"}
+                {isSaving ? (editingSnapshot ? "Updating..." : "Saving...") : (editingSnapshot ? "Update" : "Save")}
               </Button>
             </div>
           </div>
