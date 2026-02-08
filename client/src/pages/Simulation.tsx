@@ -506,22 +506,6 @@ export default function Simulation() {
                 ) : (
                   <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-                    {/* Profit Hero */}
-                    <div className={`p-5 rounded-2xl border-2 ${results.totalProfit > 0 ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
-                      <p className={`text-[11px] font-bold uppercase tracking-widest mb-2 ${results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>Net Profit</p>
-                      <div className="flex items-end justify-between gap-4">
-                        <div className={`text-5xl font-black tracking-tight tabular-nums ${results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {formatCurrency(results.totalProfit, 'USD')}
-                        </div>
-                        <div className="text-right pb-1">
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Per Delivered</p>
-                          <p className={`text-2xl font-bold tabular-nums ${results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                            {formatCurrency(results.profitPerDelivered, 'USD')}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
                     {/* Confirmed & Delivered - big and prominent */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="rounded-2xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-blue-500/5 to-transparent p-5">
@@ -613,6 +597,22 @@ export default function Simulation() {
                         <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-1">CPAD</p>
                         <p className="text-2xl font-black tabular-nums">{formatCurrency(results.cpaDelivered, 'USD')}</p>
                         <p className="text-[9px] text-muted-foreground mt-1">Ads / Delivered</p>
+                      </div>
+                    </div>
+
+                    {/* Profit Hero */}
+                    <div className={`p-5 rounded-2xl border-2 ${results.totalProfit > 0 ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                      <p className={`text-[11px] font-bold uppercase tracking-widest mb-2 ${results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>Net Profit</p>
+                      <div className="flex items-end justify-between gap-4">
+                        <div className={`text-5xl font-black tracking-tight tabular-nums ${results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {formatCurrency(results.totalProfit, 'USD')}
+                        </div>
+                        <div className="text-right pb-1">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Per Delivered</p>
+                          <p className={`text-2xl font-bold tabular-nums ${results.totalProfit > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {formatCurrency(results.profitPerDelivered, 'USD')}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
