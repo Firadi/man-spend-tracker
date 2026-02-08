@@ -515,7 +515,24 @@ export default function Simulation() {
                         <div className="bg-muted/20 rounded-xl p-4 border border-muted/20 relative overflow-hidden group hover:border-blue-500/20 transition-colors">
                             <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110" />
                             <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium mb-1">Confirmed Orders</p>
-                            <p className="text-3xl font-bold tracking-tight">{formatNumber(results.confirmedOrders)}</p>
+                            <Input
+                              type="number"
+                              value={results.confirmedOrders || ''}
+                              min={0}
+                              max={inputs.totalOrders}
+                              onChange={(e) => {
+                                let val = parseFloat(e.target.value) || 0;
+                                if (val > inputs.totalOrders) val = inputs.totalOrders;
+                                if (val < 0) val = 0;
+                                const newRate = inputs.totalOrders > 0 ? parseFloat(((val / inputs.totalOrders) * 100).toFixed(2)) : 0;
+                                const newDelivered = (val * inputs.deliveryRate) / 100;
+                                setInputs(prev => ({ ...prev, confirmationRate: newRate }));
+                                setResults(prev => prev ? { ...prev, confirmedOrders: val, deliveredOrders: newDelivered } : prev);
+                              }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
+                              className="text-3xl font-bold tracking-tight bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              data-testid="input-confirmed-orders"
+                            />
                             <p className="text-[10px] text-muted-foreground mt-2 font-mono bg-background/50 w-fit px-1.5 py-0.5 rounded">
                                 {inputs.confirmationRate}% Rate
                             </p>
@@ -523,7 +540,23 @@ export default function Simulation() {
                         <div className="bg-muted/20 rounded-xl p-4 border border-muted/20 relative overflow-hidden group hover:border-blue-500/20 transition-colors">
                             <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/5 rounded-bl-full -mr-2 -mt-2 transition-transform group-hover:scale-110" />
                             <p className="text-muted-foreground text-xs uppercase tracking-wider font-medium mb-1">Delivered Orders</p>
-                            <p className="text-3xl font-bold tracking-tight">{formatNumber(results.deliveredOrders)}</p>
+                            <Input
+                              type="number"
+                              value={results.deliveredOrders || ''}
+                              min={0}
+                              max={results.confirmedOrders}
+                              onChange={(e) => {
+                                let val = parseFloat(e.target.value) || 0;
+                                if (val > results.confirmedOrders) val = results.confirmedOrders;
+                                if (val < 0) val = 0;
+                                const newRate = results.confirmedOrders > 0 ? parseFloat(((val / results.confirmedOrders) * 100).toFixed(2)) : 0;
+                                setInputs(prev => ({ ...prev, deliveryRate: newRate }));
+                                setResults(prev => prev ? { ...prev, deliveredOrders: val } : prev);
+                              }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); calculate(); } }}
+                              className="text-3xl font-bold tracking-tight bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              data-testid="input-delivered-orders"
+                            />
                             <p className="text-[10px] text-muted-foreground mt-2 font-mono bg-background/50 w-fit px-1.5 py-0.5 rounded">
                                 {inputs.deliveryRate}% Rate
                             </p>
