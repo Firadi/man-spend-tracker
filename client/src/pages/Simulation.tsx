@@ -31,8 +31,8 @@ export default function Simulation() {
     sellingPrice: 46,
     productCost: 20,
     serviceFee: 5.7,
-    costPerLead: 0,
-    adsCost: 310,
+    costPerLead: 1,
+    adsCost: 180,
     otherCost: 0
   });
 
