@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Upload, Pencil, Trash2, FileSpreadsheet, Clipboard, Check, Filter, Globe, ImagePlus, Video, X } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, FileSpreadsheet, Clipboard, Check, Filter, Globe, ImagePlus, Video, X, Download, Play } from "lucide-react";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -186,6 +186,26 @@ export default function Products() {
       toast({ title: "Upload failed", variant: "destructive" });
     } finally {
       setUploadingProductId(null);
+    }
+  };
+
+  const handleDownloadCreative = async (product: Product) => {
+    if (!product.image) return;
+    try {
+      const response = await fetch(product.image);
+      const blob = await response.blob();
+      const ext = product.image.split('.').pop() || (isVideoFile(product.image) ? 'mp4' : 'jpg');
+      const filename = `${product.sku || product.name}_creative.${ext}`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast({ title: "Download failed", variant: "destructive" });
     }
   };
 
@@ -427,15 +447,22 @@ export default function Products() {
                         {editCreativeUrl ? (
                           <div className="relative group/preview">
                             {isVideoFile(editCreativeUrl) ? (
-                              <video
-                                src={editCreativeUrl}
-                                className="w-20 h-20 rounded-lg object-cover border"
-                                muted
-                                playsInline
-                                onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
-                                onMouseLeave={(e) => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
-                                data-testid="preview-creative-video"
-                              />
+                              <>
+                                <video
+                                  src={editCreativeUrl}
+                                  className="w-20 h-20 rounded-lg object-cover border"
+                                  muted
+                                  playsInline
+                                  onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
+                                  onMouseLeave={(e) => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                                  data-testid="preview-creative-video"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <div className="bg-black/60 rounded-full p-1">
+                                    <Play className="w-4 h-4 text-white fill-white" />
+                                  </div>
+                                </div>
+                              </>
                             ) : (
                               <img
                                 src={editCreativeUrl}
@@ -694,41 +721,59 @@ export default function Products() {
                     />
                   </TableCell>
                   <TableCell className="text-center">
-                    <div className="flex items-center justify-center">
+                    <div className="flex items-center justify-center gap-1">
                       {product.image ? (
-                        <div className="relative group/img">
-                          {isVideoFile(product.image) ? (
-                            <video
-                              src={product.image}
-                              className="w-10 h-10 rounded object-cover border"
-                              muted
-                              playsInline
-                              onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
-                              onMouseLeave={(e) => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
-                              data-testid={`video-creative-${product.id}`}
-                            />
-                          ) : (
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="w-10 h-10 rounded object-cover border"
-                              data-testid={`img-creative-${product.id}`}
-                            />
-                          )}
-                          <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded opacity-0 group-hover/img:opacity-100 transition-opacity cursor-pointer">
-                            <Pencil className="w-3 h-3 text-white" />
-                            <input
-                              type="file"
-                              accept="image/*,video/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const f = e.target.files?.[0];
-                                if (f) handleImageUpload(product.id, f);
-                              }}
-                              data-testid={`input-creative-change-${product.id}`}
-                            />
-                          </label>
-                        </div>
+                        <>
+                          <div className="relative group/img">
+                            {isVideoFile(product.image) ? (
+                              <>
+                                <video
+                                  src={product.image}
+                                  className="w-10 h-10 rounded object-cover border"
+                                  muted
+                                  playsInline
+                                  onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
+                                  onMouseLeave={(e) => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                                  data-testid={`video-creative-${product.id}`}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <div className="bg-black/60 rounded-full p-0.5">
+                                    <Play className="w-3 h-3 text-white fill-white" />
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-10 h-10 rounded object-cover border"
+                                data-testid={`img-creative-${product.id}`}
+                              />
+                            )}
+                            <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded opacity-0 group-hover/img:opacity-100 transition-opacity cursor-pointer">
+                              <Pencil className="w-3 h-3 text-white" />
+                              <input
+                                type="file"
+                                accept="image/*,video/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) handleImageUpload(product.id, f);
+                                }}
+                                data-testid={`input-creative-change-${product.id}`}
+                              />
+                            </label>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleDownloadCreative(product)}
+                            data-testid={`button-download-creative-${product.id}`}
+                          >
+                            <Download className="w-3.5 h-3.5 text-muted-foreground" />
+                          </Button>
+                        </>
                       ) : (
                         <label className={`w-10 h-10 rounded border-2 border-dashed border-muted-foreground/30 flex items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors ${uploadingProductId === product.id ? 'animate-pulse' : ''}`}>
                           <ImagePlus className="w-4 h-4 text-muted-foreground/50" />
