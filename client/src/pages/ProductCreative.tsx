@@ -98,8 +98,9 @@ export default function ProductCreative() {
 
       for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
         if (zipEntry.dir) continue;
-        const fileName = relativePath.split('/').pop() || relativePath;
-        if (fileName.startsWith('.') || fileName.startsWith('__')) continue;
+        const pathSegments = relativePath.split('/');
+        if (pathSegments.some(seg => seg.startsWith('.') || seg.startsWith('__'))) continue;
+        const fileName = pathSegments.pop() || relativePath;
         if (!isMediaFile(fileName)) continue;
         const blob = await zipEntry.async('blob');
         mediaFiles.push({ name: fileName, blob });
@@ -144,7 +145,8 @@ export default function ProductCreative() {
         if (!path) continue;
         const response = await fetch(path);
         const blob = await response.blob();
-        const ext = path.split('.').pop() || 'jpg';
+        const cleanPath = path.split('?')[0];
+        const ext = cleanPath.split('.').pop() || 'jpg';
         const fileName = `${product.sku || product.name}_creative_${idx + 1}.${ext}`;
         zip.file(fileName, blob);
       }
@@ -238,8 +240,9 @@ export default function ProductCreative() {
               size="sm"
               className="gap-1.5"
               onClick={() => {
+                if (!selectMode) setPreviewIndex(null);
+                else setSelectedIndices(new Set());
                 setSelectMode(!selectMode);
-                if (selectMode) setSelectedIndices(new Set());
               }}
               data-testid="button-toggle-select"
             >
