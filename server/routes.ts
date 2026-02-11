@@ -4,6 +4,7 @@ import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { insertCountrySchema, insertProductSchema, insertAnalysisSchema, insertSimulationSchema, insertDailyAdSchema, insertAnalysisSnapshotSchema } from "@shared/schema";
 import { z } from "zod";
+import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
 
 function ensureAuthenticated(req: any, res: any, next: any) {
   if (req.isAuthenticated()) {
@@ -24,6 +25,7 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   setupAuth(app);
+  registerObjectStorageRoutes(app);
 
   // Countries
   app.get("/api/countries", ensureAuthenticated, async (req, res) => {

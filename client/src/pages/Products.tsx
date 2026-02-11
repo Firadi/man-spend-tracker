@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Upload, Pencil, Trash2, FileSpreadsheet, Clipboard, Check, Filter, Globe } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, FileSpreadsheet, Clipboard, Check, Filter, Globe, ImagePlus, X } from "lucide-react";
+import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -150,6 +151,29 @@ export default function Products() {
 
   const toggleStatus = (product: Product) => {
     updateProduct(product.id, { status: product.status === "Active" ? "Draft" : "Active" });
+  };
+
+  const [uploadingProductId, setUploadingProductId] = useState<string | null>(null);
+
+  const handleImageUpload = async (productId: string, file: File) => {
+    setUploadingProductId(productId);
+    try {
+      const res = await fetch("/api/uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+      });
+      if (!res.ok) throw new Error("Failed to get upload URL");
+      const { uploadURL, objectPath } = await res.json();
+      const uploadRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      if (!uploadRes.ok) throw new Error("Upload failed");
+      updateProduct(productId, { image: objectPath });
+      toast({ title: "Creative uploaded" });
+    } catch (err) {
+      toast({ title: "Upload failed", variant: "destructive" });
+    } finally {
+      setUploadingProductId(null);
+    }
   };
 
   // Bulk Actions
@@ -566,6 +590,7 @@ export default function Products() {
                   onCheckedChange={(c) => handleSelectAll(!!c)}
                 />
               </TableHead>
+              <TableHead className="w-[70px] text-center">Creative</TableHead>
               <TableHead className="w-[120px]">SKU</TableHead>
               <TableHead>Product Name</TableHead>
               <TableHead className="text-right">Cost</TableHead>
@@ -577,7 +602,7 @@ export default function Products() {
           <TableBody>
             {filteredProducts.length === 0 ? (
                <TableRow>
-                 <TableCell colSpan={7} className="h-24 text-center">
+                 <TableCell colSpan={8} className="h-24 text-center">
                    No products found.
                  </TableCell>
                </TableRow>
@@ -589,6 +614,47 @@ export default function Products() {
                       checked={selectedIds.has(product.id)}
                       onCheckedChange={(c) => handleSelectRow(product.id, !!c)}
                     />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center">
+                      {product.image ? (
+                        <div className="relative group/img">
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="w-10 h-10 rounded object-cover border"
+                            data-testid={`img-creative-${product.id}`}
+                          />
+                          <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded opacity-0 group-hover/img:opacity-100 transition-opacity cursor-pointer">
+                            <Pencil className="w-3 h-3 text-white" />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleImageUpload(product.id, f);
+                              }}
+                              data-testid={`input-creative-change-${product.id}`}
+                            />
+                          </label>
+                        </div>
+                      ) : (
+                        <label className={`w-10 h-10 rounded border-2 border-dashed border-muted-foreground/30 flex items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors ${uploadingProductId === product.id ? 'animate-pulse' : ''}`}>
+                          <ImagePlus className="w-4 h-4 text-muted-foreground/50" />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleImageUpload(product.id, f);
+                            }}
+                            data-testid={`input-creative-upload-${product.id}`}
+                          />
+                        </label>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{product.sku || '-'}</TableCell>
                   <TableCell className="font-medium">
