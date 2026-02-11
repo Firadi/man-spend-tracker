@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Upload, Pencil, Trash2, Globe, ImagePlus, Play, X } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, Globe, ImagePlus, Play, X, Search } from "lucide-react";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -58,8 +58,9 @@ export default function Products() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isAssignCountryOpen, setIsAssignCountryOpen] = useState(false);
 
-  // Country Filter
+  // Filters
   const [countryFilter, setCountryFilter] = useState<string>("all");
+  const [productSearch, setProductSearch] = useState<string>("");
 
   // Delete Dialog State
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -83,10 +84,15 @@ export default function Products() {
   const [importPreview, setImportPreview] = useState<any[]>([]);
 
   const filteredProducts = useMemo(() => {
-    if (countryFilter === "all") return products;
-    if (countryFilter === "unassigned") return products.filter(p => !p.countryIds || p.countryIds.length === 0);
-    return products.filter(p => p.countryIds && p.countryIds.includes(countryFilter));
-  }, [products, countryFilter]);
+    let result = products;
+    if (countryFilter === "unassigned") result = result.filter(p => !p.countryIds || p.countryIds.length === 0);
+    else if (countryFilter !== "all") result = result.filter(p => p.countryIds && p.countryIds.includes(countryFilter));
+    if (productSearch.trim()) {
+      const q = productSearch.toLowerCase().trim();
+      result = result.filter(p => p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)));
+    }
+    return result;
+  }, [products, countryFilter, productSearch]);
 
   // Bulk Selection Handlers
   const handleSelectAll = (checked: boolean) => {
@@ -323,6 +329,17 @@ export default function Products() {
             <p className="text-muted-foreground">Manage your product catalog.</p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search products..."
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                className="w-[180px] pl-8"
+                data-testid="input-product-search"
+              />
+            </div>
+
             <Select value={countryFilter} onValueChange={setCountryFilter}>
               <SelectTrigger className="w-[180px]" data-testid="select-country-filter">
                 <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
