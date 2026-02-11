@@ -30,6 +30,7 @@ export const products = pgTable("products", {
   cost: real("cost").default(0).notNull(),
   price: real("price").default(0).notNull(),
   image: text("image"),
+  creatives: jsonb("creatives").$type<string[]>().default([]).notNull(),
   countryIds: jsonb("country_ids").$type<string[]>().default([]).notNull(),
 });
 

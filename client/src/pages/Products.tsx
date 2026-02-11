@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Upload, Pencil, Trash2, Globe, ImagePlus, Play, X, Download } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, Globe, ImagePlus, Play, X } from "lucide-react";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -124,7 +124,7 @@ export default function Products() {
       toast({ title: "Product updated" });
     } else {
       const assignCountryIds = data.countryIds.length > 0 ? data.countryIds : (countryFilter !== "all" && countryFilter !== "unassigned" ? [countryFilter] : []);
-      addProduct({ ...data, sku: data.sku || "", countryIds: assignCountryIds, image: editCreativeUrl || undefined });
+      addProduct({ ...data, sku: data.sku || "", countryIds: assignCountryIds, image: editCreativeUrl || undefined, creatives: [] });
       toast({ title: "Product added" });
     }
     setIsAddOpen(false);
@@ -161,7 +161,6 @@ export default function Products() {
     updateProduct(product.id, { status: product.status === "Active" ? "Draft" : "Active" });
   };
 
-  const [uploadingProductId, setUploadingProductId] = useState<string | null>(null);
   const [editCreativeUrl, setEditCreativeUrl] = useState<string | null>(null);
   const [editCreativeUploading, setEditCreativeUploading] = useState(false);
 
@@ -176,39 +175,6 @@ export default function Products() {
     const uploadRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
     if (!uploadRes.ok) throw new Error("Upload failed");
     return objectPath;
-  };
-
-  const handleImageUpload = async (productId: string, file: File) => {
-    setUploadingProductId(productId);
-    try {
-      const objectPath = await uploadCreativeFile(file);
-      updateProduct(productId, { image: objectPath });
-      toast({ title: "Creative uploaded" });
-    } catch (err) {
-      toast({ title: "Upload failed", variant: "destructive" });
-    } finally {
-      setUploadingProductId(null);
-    }
-  };
-
-  const handleDownloadCreative = async (product: Product) => {
-    if (!product.image) return;
-    try {
-      const response = await fetch(product.image);
-      const blob = await response.blob();
-      const ext = product.image.split('.').pop() || (isVideoFile(product.image) ? 'mp4' : 'jpg');
-      const filename = `${product.sku || product.name}_creative.${ext}`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      toast({ title: "Download failed", variant: "destructive" });
-    }
   };
 
   const handleDialogCreativeUpload = async (file: File) => {
@@ -337,7 +303,8 @@ export default function Products() {
       status: 'Draft' as const,
       cost: 0,
       price: 0,
-      countryIds: assignCountryIds
+      countryIds: assignCountryIds,
+      creatives: []
     }));
     addProducts(newProducts);
     setIsImportOpen(false);
@@ -723,75 +690,59 @@ export default function Products() {
                     />
                   </TableCell>
                   <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-1">
-                      {product.image ? (
-                        <>
-                          <div className="relative group/img">
-                            {isVideoFile(product.image) ? (
-                              <>
-                                <video
-                                  src={product.image}
-                                  className="w-10 h-10 rounded object-cover border"
-                                  muted
-                                  playsInline
-                                  onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
-                                  onMouseLeave={(e) => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
-                                  data-testid={`video-creative-${product.id}`}
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                  <div className="bg-black/60 rounded-full p-0.5">
-                                    <Play className="w-3 h-3 text-white fill-white" />
+                    {(() => {
+                      const thumb = product.creatives?.[0] || product.image;
+                      const count = product.creatives?.length || 0;
+                      if (thumb) {
+                        return (
+                          <div className="flex items-center justify-center">
+                            <div
+                              className="relative group/img cursor-pointer"
+                              onClick={() => navigate(`/products/${product.id}/creative`)}
+                            >
+                              {isVideoFile(thumb) ? (
+                                <>
+                                  <video
+                                    src={thumb}
+                                    className="w-10 h-10 rounded object-cover border"
+                                    muted
+                                    playsInline
+                                    data-testid={`video-creative-${product.id}`}
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div className="bg-black/60 rounded-full p-0.5">
+                                      <Play className="w-3 h-3 text-white fill-white" />
+                                    </div>
                                   </div>
+                                </>
+                              ) : (
+                                <img
+                                  src={thumb}
+                                  alt={product.name}
+                                  className="w-10 h-10 rounded object-cover border"
+                                  data-testid={`img-creative-${product.id}`}
+                                />
+                              )}
+                              {count > 1 && (
+                                <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                                  {count}
                                 </div>
-                              </>
-                            ) : (
-                              <img
-                                src={product.image}
-                                alt={product.name}
-                                className="w-10 h-10 rounded object-cover border"
-                                data-testid={`img-creative-${product.id}`}
-                              />
-                            )}
-                            <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded opacity-0 group-hover/img:opacity-100 transition-opacity cursor-pointer">
-                              <Pencil className="w-3 h-3 text-white" />
-                              <input
-                                type="file"
-                                accept="image/*,video/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const f = e.target.files?.[0];
-                                  if (f) handleImageUpload(product.id, f);
-                                }}
-                                data-testid={`input-creative-change-${product.id}`}
-                              />
-                            </label>
+                              )}
+                            </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => handleDownloadCreative(product)}
-                            data-testid={`button-download-creative-${product.id}`}
+                        );
+                      }
+                      return (
+                        <div className="flex items-center justify-center">
+                          <div
+                            className="w-10 h-10 rounded border-2 border-dashed border-muted-foreground/30 flex items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors"
+                            onClick={() => navigate(`/products/${product.id}/creative`)}
                           >
-                            <Download className="w-3.5 h-3.5 text-muted-foreground" />
-                          </Button>
-                        </>
-                      ) : (
-                        <label className={`w-10 h-10 rounded border-2 border-dashed border-muted-foreground/30 flex items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors ${uploadingProductId === product.id ? 'animate-pulse' : ''}`}>
-                          <ImagePlus className="w-4 h-4 text-muted-foreground/50" />
-                          <input
-                            type="file"
-                            accept="image/*,video/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (f) handleImageUpload(product.id, f);
-                            }}
-                            data-testid={`input-creative-upload-${product.id}`}
-                          />
-                        </label>
-                      )}
-                    </div>
+                            <ImagePlus className="w-4 h-4 text-muted-foreground/50" />
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{product.sku || '-'}</TableCell>
                   <TableCell className="font-medium">

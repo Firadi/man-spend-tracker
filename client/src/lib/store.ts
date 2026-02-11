@@ -22,6 +22,7 @@ export interface Product {
   cost: number;
   price: number;
   image?: string;
+  creatives: string[];
   countryIds: string[];
 }
 
@@ -232,7 +233,7 @@ export const useStore = create<AppState>((set, get) => ({
       },
 
       addProduct: async (product) => {
-        const res = await apiRequest("POST", "/api/products", { ...product, id: uuidv4(), countryIds: product.countryIds || [] });
+        const res = await apiRequest("POST", "/api/products", { ...product, id: uuidv4(), countryIds: product.countryIds || [], creatives: product.creatives ?? [] });
         const saved = await res.json();
         set((state) => ({
           products: [...state.products, saved]
@@ -241,7 +242,7 @@ export const useStore = create<AppState>((set, get) => ({
 
       addProducts: async (newProducts) => {
         await Promise.all(newProducts.map(p => 
-          apiRequest("POST", "/api/products", { ...p, id: uuidv4(), countryIds: p.countryIds || [] })
+          apiRequest("POST", "/api/products", { ...p, id: uuidv4(), countryIds: p.countryIds || [], creatives: p.creatives ?? [] })
         ));
         await get().fetchData();
       },
