@@ -12,6 +12,7 @@ import Countries from "@/pages/Countries";
 import DailyAdsTracker from "@/pages/DailyAdsTracker";
 import AdminPanel from "@/pages/AdminPanel";
 import AnalysisHistory from "@/pages/AnalysisHistory";
+import ProductCreative from "@/pages/ProductCreative";
 import AuthPage from "@/pages/AuthPage";
 import { useStore } from "@/lib/store";
 import { useEffect } from "react";
@@ -56,6 +57,7 @@ function AppContent() {
         <Route path="/daily-ads" component={DailyAdsTracker} />
         <Route path="/simulation" component={Simulation} />
         <Route path="/products" component={Products} />
+        <Route path="/products/:id/creative" component={ProductCreative} />
         <Route path="/countries" component={Countries} />
         <Route path="/admin" component={AdminPanel} />
         <Route component={NotFound} />

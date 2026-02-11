@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useStore, Product } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Upload, Pencil, Trash2, FileSpreadsheet, Clipboard, Check, Filter, Globe, ImagePlus, Video, X, Download, Play } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, Globe, ImagePlus, Play, X, Download } from "lucide-react";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +48,7 @@ const productSchema = z.object({
 
 export default function Products() {
   const { products, countries, addProduct, addProducts, updateProduct, deleteProduct, deleteProducts } = useStore();
+  const [, navigate] = useLocation();
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -162,8 +164,6 @@ export default function Products() {
   const [uploadingProductId, setUploadingProductId] = useState<string | null>(null);
   const [editCreativeUrl, setEditCreativeUrl] = useState<string | null>(null);
   const [editCreativeUploading, setEditCreativeUploading] = useState(false);
-  const [creativeDialogProduct, setCreativeDialogProduct] = useState<Product | null>(null);
-  const [creativeDialogUploading, setCreativeDialogUploading] = useState(false);
 
   const uploadCreativeFile = async (file: File): Promise<string> => {
     const res = await fetch("/api/uploads/request-url", {
@@ -222,28 +222,6 @@ export default function Products() {
     } finally {
       setEditCreativeUploading(false);
     }
-  };
-
-  const handleCreativeDialogUpload = async (file: File) => {
-    if (!creativeDialogProduct) return;
-    setCreativeDialogUploading(true);
-    try {
-      const objectPath = await uploadCreativeFile(file);
-      updateProduct(creativeDialogProduct.id, { image: objectPath });
-      setCreativeDialogProduct({ ...creativeDialogProduct, image: objectPath });
-      toast({ title: "Creative uploaded" });
-    } catch (err) {
-      toast({ title: "Upload failed", variant: "destructive" });
-    } finally {
-      setCreativeDialogUploading(false);
-    }
-  };
-
-  const handleCreativeDialogRemove = () => {
-    if (!creativeDialogProduct) return;
-    updateProduct(creativeDialogProduct.id, { image: "" });
-    setCreativeDialogProduct({ ...creativeDialogProduct, image: "" });
-    toast({ title: "Creative removed" });
   };
 
   // Bulk Actions
@@ -709,99 +687,6 @@ export default function Products() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!creativeDialogProduct} onOpenChange={(open) => { if (!open) setCreativeDialogProduct(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Creative - {creativeDialogProduct?.name}</DialogTitle>
-            <DialogDescription>
-              {creativeDialogProduct?.sku || 'No SKU'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {creativeDialogProduct?.image ? (
-              <div className="relative">
-                {isVideoFile(creativeDialogProduct.image) ? (
-                  <div className="relative">
-                    <video
-                      src={creativeDialogProduct.image}
-                      className="w-full max-h-[300px] rounded-lg object-contain border bg-muted"
-                      controls
-                      muted
-                      playsInline
-                      data-testid="creative-dialog-video"
-                    />
-                    <div className="absolute top-2 left-2">
-                      <Badge variant="secondary" className="gap-1">
-                        <Video className="w-3 h-3" /> Video
-                      </Badge>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <img
-                      src={creativeDialogProduct.image}
-                      alt={creativeDialogProduct.name}
-                      className="w-full max-h-[300px] rounded-lg object-contain border bg-muted"
-                      data-testid="creative-dialog-image"
-                    />
-                    <div className="absolute top-2 left-2">
-                      <Badge variant="secondary" className="gap-1">
-                        <ImagePlus className="w-3 h-3" /> Image
-                      </Badge>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-[200px] border-2 border-dashed rounded-lg bg-muted/30 text-muted-foreground">
-                <ImagePlus className="w-10 h-10 mb-2 opacity-40" />
-                <p className="text-sm">No creative uploaded</p>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <label className={`flex-1 ${creativeDialogUploading ? 'pointer-events-none' : ''}`}>
-                <Button variant="outline" className="w-full gap-2" asChild>
-                  <span>
-                    <Upload className="w-4 h-4" />
-                    {creativeDialogUploading ? 'Uploading...' : creativeDialogProduct?.image ? 'Change Creative' : 'Upload Creative'}
-                  </span>
-                </Button>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleCreativeDialogUpload(f);
-                  }}
-                  data-testid="input-creative-dialog-upload"
-                />
-              </label>
-              {creativeDialogProduct?.image && (
-                <>
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    onClick={() => creativeDialogProduct && handleDownloadCreative(creativeDialogProduct)}
-                    data-testid="button-creative-dialog-download"
-                  >
-                    <Download className="w-4 h-4" /> Export
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={handleCreativeDialogRemove}
-                    data-testid="button-creative-dialog-remove"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
@@ -941,7 +826,7 @@ export default function Products() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => setCreativeDialogProduct(product)}
+                        onClick={() => navigate(`/products/${product.id}/creative`)}
                         data-testid={`button-creative-manage-${product.id}`}
                       >
                         <ImagePlus className="w-4 h-4" />
