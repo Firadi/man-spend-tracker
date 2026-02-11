@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Upload, Pencil, Trash2, FileSpreadsheet, Clipboard, Check, Filter, Globe, ImagePlus, X } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, FileSpreadsheet, Clipboard, Check, Filter, Globe, ImagePlus, Video, X } from "lucide-react";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +31,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// Schema for adding/editing a single product
+const isVideoFile = (path: string) => {
+  const ext = path.split('.').pop()?.toLowerCase() || '';
+  return ['mp4', 'webm', 'mov', 'avi', 'mkv', 'ogg'].includes(ext);
+};
+
 const productSchema = z.object({
   sku: z.string().optional(),
   name: z.string().min(1, "Name is required"),
@@ -100,6 +104,7 @@ export default function Products() {
 
   const handleEdit = (product: Product) => {
     setEditingId(product.id);
+    setEditCreativeUrl(product.image || null);
     form.reset({
       sku: product.sku,
       name: product.name,
@@ -113,15 +118,16 @@ export default function Products() {
 
   const onSubmit = (data: z.infer<typeof productSchema>) => {
     if (editingId) {
-      updateProduct(editingId, { ...data, sku: data.sku || "", countryIds: data.countryIds });
+      updateProduct(editingId, { ...data, sku: data.sku || "", countryIds: data.countryIds, image: editCreativeUrl || undefined });
       toast({ title: "Product updated" });
     } else {
       const assignCountryIds = data.countryIds.length > 0 ? data.countryIds : (countryFilter !== "all" && countryFilter !== "unassigned" ? [countryFilter] : []);
-      addProduct({ ...data, sku: data.sku || "", countryIds: assignCountryIds });
+      addProduct({ ...data, sku: data.sku || "", countryIds: assignCountryIds, image: editCreativeUrl || undefined });
       toast({ title: "Product added" });
     }
     setIsAddOpen(false);
     setEditingId(null);
+    setEditCreativeUrl(null);
     form.reset();
   };
 
@@ -154,25 +160,45 @@ export default function Products() {
   };
 
   const [uploadingProductId, setUploadingProductId] = useState<string | null>(null);
+  const [editCreativeUrl, setEditCreativeUrl] = useState<string | null>(null);
+  const [editCreativeUploading, setEditCreativeUploading] = useState(false);
+
+  const uploadCreativeFile = async (file: File): Promise<string> => {
+    const res = await fetch("/api/uploads/request-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+    });
+    if (!res.ok) throw new Error("Failed to get upload URL");
+    const { uploadURL, objectPath } = await res.json();
+    const uploadRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+    if (!uploadRes.ok) throw new Error("Upload failed");
+    return objectPath;
+  };
 
   const handleImageUpload = async (productId: string, file: File) => {
     setUploadingProductId(productId);
     try {
-      const res = await fetch("/api/uploads/request-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
-      });
-      if (!res.ok) throw new Error("Failed to get upload URL");
-      const { uploadURL, objectPath } = await res.json();
-      const uploadRes = await fetch(uploadURL, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-      if (!uploadRes.ok) throw new Error("Upload failed");
+      const objectPath = await uploadCreativeFile(file);
       updateProduct(productId, { image: objectPath });
       toast({ title: "Creative uploaded" });
     } catch (err) {
       toast({ title: "Upload failed", variant: "destructive" });
     } finally {
       setUploadingProductId(null);
+    }
+  };
+
+  const handleDialogCreativeUpload = async (file: File) => {
+    setEditCreativeUploading(true);
+    try {
+      const objectPath = await uploadCreativeFile(file);
+      setEditCreativeUrl(objectPath);
+      toast({ title: "Creative uploaded" });
+    } catch (err) {
+      toast({ title: "Upload failed", variant: "destructive" });
+    } finally {
+      setEditCreativeUploading(false);
     }
   };
 
@@ -380,6 +406,7 @@ export default function Products() {
               setIsAddOpen(open);
               if (!open) {
                 setEditingId(null);
+                setEditCreativeUrl(null);
                 form.reset();
               }
             }}>
@@ -394,6 +421,57 @@ export default function Products() {
                 </DialogHeader>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Creative (Image / Video)</Label>
+                      <div className="flex items-center gap-4">
+                        {editCreativeUrl ? (
+                          <div className="relative group/preview">
+                            {isVideoFile(editCreativeUrl) ? (
+                              <video
+                                src={editCreativeUrl}
+                                className="w-20 h-20 rounded-lg object-cover border"
+                                muted
+                                playsInline
+                                onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
+                                onMouseLeave={(e) => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                                data-testid="preview-creative-video"
+                              />
+                            ) : (
+                              <img
+                                src={editCreativeUrl}
+                                alt="Creative"
+                                className="w-20 h-20 rounded-lg object-cover border"
+                                data-testid="preview-creative-image"
+                              />
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setEditCreativeUrl(null)}
+                              className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5"
+                              data-testid="button-remove-creative"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : null}
+                        <label className={`flex-1 flex flex-col items-center justify-center h-20 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-colors ${editCreativeUploading ? 'animate-pulse pointer-events-none' : ''}`}>
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <ImagePlus className="w-5 h-5" />
+                            <span className="text-sm">{editCreativeUploading ? 'Uploading...' : editCreativeUrl ? 'Change' : 'Upload image or video'}</span>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*,video/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) handleDialogCreativeUpload(f);
+                            }}
+                            data-testid="input-dialog-creative-upload"
+                          />
+                        </label>
+                      </div>
+                    </div>
                     <FormField
                       control={form.control}
                       name="sku"
@@ -619,17 +697,29 @@ export default function Products() {
                     <div className="flex items-center justify-center">
                       {product.image ? (
                         <div className="relative group/img">
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-10 h-10 rounded object-cover border"
-                            data-testid={`img-creative-${product.id}`}
-                          />
+                          {isVideoFile(product.image) ? (
+                            <video
+                              src={product.image}
+                              className="w-10 h-10 rounded object-cover border"
+                              muted
+                              playsInline
+                              onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
+                              onMouseLeave={(e) => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                              data-testid={`video-creative-${product.id}`}
+                            />
+                          ) : (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-10 h-10 rounded object-cover border"
+                              data-testid={`img-creative-${product.id}`}
+                            />
+                          )}
                           <label className="absolute inset-0 flex items-center justify-center bg-black/50 rounded opacity-0 group-hover/img:opacity-100 transition-opacity cursor-pointer">
                             <Pencil className="w-3 h-3 text-white" />
                             <input
                               type="file"
-                              accept="image/*"
+                              accept="image/*,video/*"
                               className="hidden"
                               onChange={(e) => {
                                 const f = e.target.files?.[0];
@@ -644,7 +734,7 @@ export default function Products() {
                           <ImagePlus className="w-4 h-4 text-muted-foreground/50" />
                           <input
                             type="file"
-                            accept="image/*"
+                            accept="image/*,video/*"
                             className="hidden"
                             onChange={(e) => {
                               const f = e.target.files?.[0];
