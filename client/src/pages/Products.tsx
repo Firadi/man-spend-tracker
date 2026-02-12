@@ -92,7 +92,11 @@ export default function Products() {
       const q = productSearch.toLowerCase().trim();
       result = result.filter(p => p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)));
     }
-    return result;
+    return [...result].sort((a, b) => {
+      if (a.status === "Active" && b.status !== "Active") return -1;
+      if (a.status !== "Active" && b.status === "Active") return 1;
+      return 0;
+    });
   }, [products, countryFilter, productSearch]);
 
   // Bulk Selection Handlers
@@ -830,7 +834,7 @@ export default function Products() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="icon"
