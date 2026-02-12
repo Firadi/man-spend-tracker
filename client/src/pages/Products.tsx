@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Upload, Pencil, Trash2, Globe, ImagePlus, Play, X, Search } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, Globe, ImagePlus, Play, X, Search, Package, CheckCircle, Image } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -320,6 +321,10 @@ export default function Products() {
     toast({ title: msg });
   };
 
+  const totalProducts = filteredProducts.length;
+  const activeProducts = filteredProducts.filter(p => p.status === "Active").length;
+  const withCreatives = filteredProducts.filter(p => (p.creatives && p.creatives.length > 0) || p.image).length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
@@ -606,6 +611,42 @@ export default function Products() {
               </DialogContent>
             </Dialog>
           </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <Card data-testid="stat-total-products">
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Package className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{totalProducts}</p>
+                <p className="text-xs text-muted-foreground">Total Products</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card data-testid="stat-active-products">
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <CheckCircle className="w-5 h-5 text-green-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{activeProducts}</p>
+                <p className="text-xs text-muted-foreground">Active</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card data-testid="stat-with-creatives">
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <Image className="w-5 h-5 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{withCreatives}</p>
+                <p className="text-xs text-muted-foreground">With Creatives</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Bulk Actions Toolbar */}
