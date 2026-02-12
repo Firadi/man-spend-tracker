@@ -61,6 +61,7 @@ export default function Products() {
 
   // Filters
   const [countryFilter, setCountryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [productSearch, setProductSearch] = useState<string>("");
 
   // Delete Dialog State
@@ -88,6 +89,8 @@ export default function Products() {
     let result = products;
     if (countryFilter === "unassigned") result = result.filter(p => !p.countryIds || p.countryIds.length === 0);
     else if (countryFilter !== "all") result = result.filter(p => p.countryIds && p.countryIds.includes(countryFilter));
+    if (statusFilter === "active") result = result.filter(p => p.status === "Active");
+    else if (statusFilter === "draft") result = result.filter(p => p.status === "Draft");
     if (productSearch.trim()) {
       const q = productSearch.toLowerCase().trim();
       result = result.filter(p => p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)));
@@ -97,7 +100,7 @@ export default function Products() {
       if (a.status !== "Active" && b.status === "Active") return 1;
       return 0;
     });
-  }, [products, countryFilter, productSearch]);
+  }, [products, countryFilter, statusFilter, productSearch]);
 
   // Bulk Selection Handlers
   const handleSelectAll = (checked: boolean) => {
@@ -351,6 +354,18 @@ export default function Products() {
                 data-testid="input-product-search"
               />
             </div>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px]" data-testid="select-status-filter">
+                <CheckCircle className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue placeholder="All Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+              </SelectContent>
+            </Select>
 
             <Select value={countryFilter} onValueChange={setCountryFilter}>
               <SelectTrigger className="w-[180px]" data-testid="select-country-filter">
