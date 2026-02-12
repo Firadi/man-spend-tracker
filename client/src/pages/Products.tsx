@@ -327,7 +327,10 @@ export default function Products() {
 
   const totalProducts = filteredProducts.length;
   const activeProducts = filteredProducts.filter(p => p.status === "Active").length;
-  const withCreatives = filteredProducts.filter(p => (p.creatives && p.creatives.length > 0) || p.image).length;
+  const totalCreatives = filteredProducts.reduce((sum, p) => {
+    const count = (p.creatives && p.creatives.length > 0) ? p.creatives.length : (p.image ? 1 : 0);
+    return sum + count;
+  }, 0);
 
   return (
     <div className="space-y-6">
@@ -646,8 +649,8 @@ export default function Products() {
                 <Image className="w-5 h-5 text-purple-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{withCreatives}</p>
-                <p className="text-xs text-muted-foreground">With Creatives</p>
+                <p className="text-2xl font-bold">{totalCreatives}</p>
+                <p className="text-xs text-muted-foreground">Total Creatives</p>
               </div>
             </CardContent>
           </Card>
