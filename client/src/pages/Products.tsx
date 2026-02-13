@@ -113,6 +113,9 @@ export default function Products() {
         case "last_30_days":
           startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           break;
+        case "this_year":
+          startDate = new Date(now.getFullYear(), 0, 1);
+          break;
         default:
           startDate = new Date(0);
       }
@@ -422,6 +425,7 @@ export default function Products() {
                 <SelectItem value="this_month">This Month</SelectItem>
                 <SelectItem value="last_7_days">Last 7 Days</SelectItem>
                 <SelectItem value="last_30_days">Last 30 Days</SelectItem>
+                <SelectItem value="this_year">This Year</SelectItem>
               </SelectContent>
             </Select>
 
