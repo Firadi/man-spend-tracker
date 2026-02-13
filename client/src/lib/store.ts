@@ -24,6 +24,7 @@ export interface Product {
   image?: string;
   creatives: string[];
   countryIds: string[];
+  createdAt?: string;
 }
 
 export interface DailyAdEntry {
@@ -233,7 +234,7 @@ export const useStore = create<AppState>((set, get) => ({
       },
 
       addProduct: async (product) => {
-        const res = await apiRequest("POST", "/api/products", { ...product, id: uuidv4(), countryIds: product.countryIds || [], creatives: product.creatives ?? [] });
+        const res = await apiRequest("POST", "/api/products", { ...product, id: uuidv4(), countryIds: product.countryIds || [], creatives: product.creatives ?? [], createdAt: new Date().toISOString() });
         const saved = await res.json();
         set((state) => ({
           products: [...state.products, saved]
@@ -242,7 +243,7 @@ export const useStore = create<AppState>((set, get) => ({
 
       addProducts: async (newProducts) => {
         await Promise.all(newProducts.map(p => 
-          apiRequest("POST", "/api/products", { ...p, id: uuidv4(), countryIds: p.countryIds || [], creatives: p.creatives ?? [] })
+          apiRequest("POST", "/api/products", { ...p, id: uuidv4(), countryIds: p.countryIds || [], creatives: p.creatives ?? [], createdAt: new Date().toISOString() })
         ));
         await get().fetchData();
       },
