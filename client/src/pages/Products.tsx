@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Upload, Pencil, Trash2, Globe, ImagePlus, Play, X, Search, Package, CheckCircle, Image, Calendar } from "lucide-react";
+import { Plus, Upload, Pencil, Trash2, Globe, ImagePlus, Play, X, Search, Package, CheckCircle, Image } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useUpload } from "@/hooks/use-upload";
 import { useToast } from "@/hooks/use-toast";
@@ -62,7 +62,6 @@ export default function Products() {
   // Filters
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState<string>("all");
   const [productSearch, setProductSearch] = useState<string>("");
 
   // Delete Dialog State
@@ -92,38 +91,6 @@ export default function Products() {
     else if (countryFilter !== "all") result = result.filter(p => p.countryIds && p.countryIds.includes(countryFilter));
     if (statusFilter === "active") result = result.filter(p => p.status === "Active");
     else if (statusFilter === "draft") result = result.filter(p => p.status === "Draft");
-    if (dateFilter !== "all") {
-      const now = new Date();
-      let startDate: Date;
-      switch (dateFilter) {
-        case "today":
-          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          break;
-        case "this_week": {
-          const day = now.getDay() || 7;
-          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
-          break;
-        }
-        case "this_month":
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-          break;
-        case "last_7_days":
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case "last_30_days":
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          break;
-        case "this_year":
-          startDate = new Date(now.getFullYear(), 0, 1);
-          break;
-        default:
-          startDate = new Date(0);
-      }
-      result = result.filter(p => {
-        if (!p.createdAt) return false;
-        return new Date(p.createdAt) >= startDate;
-      });
-    }
     if (productSearch.trim()) {
       const q = productSearch.toLowerCase().trim();
       result = result.filter(p => p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q)));
@@ -133,7 +100,7 @@ export default function Products() {
       if (a.status !== "Active" && b.status === "Active") return 1;
       return 0;
     });
-  }, [products, countryFilter, statusFilter, dateFilter, productSearch]);
+  }, [products, countryFilter, statusFilter, productSearch]);
 
   // Bulk Selection Handlers
   const handleSelectAll = (checked: boolean) => {
@@ -377,12 +344,12 @@ export default function Products() {
             <p className="text-muted-foreground">Manage your product catalog.</p>
           </div>
           <div className="flex items-center gap-2">
-            {(productSearch || statusFilter !== "all" || dateFilter !== "all" || countryFilter !== "all") && (
+            {(productSearch || statusFilter !== "all" || countryFilter !== "all") && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="gap-1.5 text-muted-foreground"
-                onClick={() => { setProductSearch(""); setStatusFilter("all"); setDateFilter("all"); setCountryFilter("all"); }}
+                onClick={() => { setProductSearch(""); setStatusFilter("all"); setCountryFilter("all"); }}
                 data-testid="button-reset-filters"
               >
                 <X className="w-3.5 h-3.5" />
@@ -410,22 +377,6 @@ export default function Products() {
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={dateFilter} onValueChange={setDateFilter}>
-              <SelectTrigger className="w-[160px]" data-testid="select-date-filter">
-                <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="All Dates" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Dates</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="this_week">This Week</SelectItem>
-                <SelectItem value="this_month">This Month</SelectItem>
-                <SelectItem value="last_7_days">Last 7 Days</SelectItem>
-                <SelectItem value="last_30_days">Last 30 Days</SelectItem>
-                <SelectItem value="this_year">This Year</SelectItem>
               </SelectContent>
             </Select>
 
