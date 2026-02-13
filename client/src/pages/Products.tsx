@@ -763,13 +763,14 @@ export default function Products() {
               <TableHead className="text-right">Cost</TableHead>
               <TableHead className="text-right">Price</TableHead>
               <TableHead className="w-[100px] text-center">Status</TableHead>
+              <TableHead className="w-[100px] text-center">Date</TableHead>
               <TableHead className="w-[100px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredProducts.length === 0 ? (
                <TableRow>
-                 <TableCell colSpan={8} className="h-24 text-center">
+                 <TableCell colSpan={9} className="h-24 text-center">
                    No products found.
                  </TableCell>
                </TableRow>
@@ -863,6 +864,9 @@ export default function Products() {
                     >
                       {product.status}
                     </Badge>
+                  </TableCell>
+                  <TableCell className="text-center text-xs text-muted-foreground">
+                    {product.createdAt ? new Date(product.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
