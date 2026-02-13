@@ -11,13 +11,17 @@ import { Save, CalendarDays, Loader2, Search, DollarSign, TrendingUp, Package, F
 import { Input } from "@/components/ui/input";
 import { jsPDF } from 'jspdf';
 
-type DateFilter = "today" | "this_week" | "last_week" | "this_month" | "last_month" | "this_year" | "custom";
+type DateFilter = "all" | "today" | "this_week" | "last_week" | "this_month" | "last_month" | "this_year" | "custom";
 
 function getDateRange(filter: DateFilter, customStart?: string, customEnd?: string): { start: Date; end: Date } {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   switch (filter) {
+    case "all": {
+      const start = new Date(2020, 0, 1);
+      return { start, end: today };
+    }
     case "today": {
       return { start: today, end: today };
     }
@@ -379,6 +383,7 @@ export default function DailyAdsTracker() {
               <SelectValue placeholder="Date Range" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="this_week">This Week</SelectItem>
               <SelectItem value="last_week">Last Week</SelectItem>
